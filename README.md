@@ -129,7 +129,7 @@ with both APKs attached for download.
 
 Runtime verification runs the real Android data layer on the JVM with Robolectric (Room SQLite CRUD, and the local MediaStore scan through a shadow ContentResolver).
 
-A **JVM unit-test suite** (~289 tests, all green) covers the pure-logic engines — smart filters,
+A **JVM unit-test suite** (~293 tests, all green) covers the pure-logic engines — smart filters,
 playlists, mixes, string templates, LRC lyrics, ReplayGain, Smart Queue/Flow, fade curves, multiple
 queues, tag/NFO/M3U-PLS parsers, offline cache, Subsonic/Jellyfin auth, differential + server sync,
 AutoEQ, equalizer model, backup crypto, waveform/smart-fades, playback marking, sleep timer,
@@ -137,7 +137,7 @@ chapters, Now Playing fields, transcode, renderers, weighted shuffle, media-sess
 internet radio, app styles/themes/profiles, and audiophile output negotiation.
 
 ```bash
-./gradlew :app:testFossDebugUnitTest   # → 289 passing, 0 failures
+./gradlew :app:testFossDebugUnitTest   # → 293 passing, 0 failures
 ```
 
 ## Using the app
