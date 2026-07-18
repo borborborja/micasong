@@ -122,6 +122,41 @@ class MediaRepository @Inject constructor(
         return PersonalMixGenerator.generate(all, size, recent)
     }
 
+    // ---- Playlist management (spec §32) ----
+    suspend fun createPlaylist(name: String): Long =
+        playlistDao.upsert(com.micasong.player.data.db.PlaylistEntity(name = name, providerId = LOCAL_PROVIDER_ID))
+
+    /** Append tracks to a playlist (skipping ones already present) and refresh its count. */
+    suspend fun addTracksToPlaylist(playlistId: Long, trackIds: List<Long>) {
+        val current = playlistDao.memberTrackIds(playlistId)
+        val merged = current + trackIds.filter { it !in current }
+        playlistDao.setPlaylistTracks(playlistId, merged)
+        updatePlaylistCount(playlistId, merged.size)
+    }
+
+    suspend fun removeTrackFromPlaylist(playlistId: Long, trackId: Long) {
+        val remaining = playlistDao.memberTrackIds(playlistId).filterNot { it == trackId }
+        playlistDao.setPlaylistTracks(playlistId, remaining)
+        updatePlaylistCount(playlistId, remaining.size)
+    }
+
+    suspend fun renamePlaylist(playlistId: Long, name: String) {
+        playlistDao.getPlaylist(playlistId)?.let { playlistDao.upsert(it.copy(name = name)) }
+    }
+
+    suspend fun deletePlaylist(playlistId: Long) = playlistDao.delete(playlistId)
+
+    /** Save an ordered list of tracks (e.g. the current queue) as a new playlist (spec §16). */
+    suspend fun saveAsPlaylist(name: String, trackIds: List<Long>): Long {
+        val id = createPlaylist(name)
+        addTracksToPlaylist(id, trackIds)
+        return id
+    }
+
+    private suspend fun updatePlaylistCount(playlistId: Long, count: Int) {
+        playlistDao.getPlaylist(playlistId)?.let { playlistDao.upsert(it.copy(trackCount = count)) }
+    }
+
     // ---- Smart playlists (spec §31) ----
     /** Evaluate a smart-playlist definition against the current library snapshot. */
     suspend fun evaluateSmartPlaylist(def: SmartPlaylistDefinition): List<Track> {

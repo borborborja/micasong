@@ -129,7 +129,7 @@ with both APKs attached for download.
 
 Runtime verification runs real components on the JVM with Robolectric: the Room SQLite data layer, the local MediaStore scan (shadow ContentResolver), and full Subsonic & Jellyfin sync against a local fake server (MockWebServer) — the whole auth→HTTP→JSON→DB path.
 
-A **JVM unit-test suite** (~302 tests, all green) covers the pure-logic engines — smart filters,
+A **JVM unit-test suite** (~304 tests, all green) covers the pure-logic engines — smart filters,
 playlists, mixes, string templates, LRC lyrics, ReplayGain, Smart Queue/Flow, fade curves, multiple
 queues, tag/NFO/M3U-PLS parsers, offline cache, Subsonic/Jellyfin auth, differential + server sync,
 AutoEQ, equalizer model, backup crypto, waveform/smart-fades, playback marking, sleep timer,
@@ -137,7 +137,7 @@ chapters, Now Playing fields, transcode, renderers, weighted shuffle, media-sess
 internet radio, app styles/themes/profiles, and audiophile output negotiation.
 
 ```bash
-./gradlew :app:testFossDebugUnitTest   # → 302 passing, 0 failures
+./gradlew :app:testFossDebugUnitTest   # → 304 passing, 0 failures
 ```
 
 ## Using the app

@@ -17,6 +17,12 @@ interface PlaylistDao {
     @Query("SELECT * FROM playlists WHERE id = :id")
     fun playlist(id: Long): Flow<PlaylistEntity?>
 
+    @Query("SELECT * FROM playlists WHERE id = :id")
+    suspend fun getPlaylist(id: Long): PlaylistEntity?
+
+    @Query("SELECT trackId FROM playlist_tracks WHERE playlistId = :playlistId ORDER BY position ASC")
+    suspend fun memberTrackIds(playlistId: Long): List<Long>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(playlist: PlaylistEntity): Long
 
