@@ -63,6 +63,8 @@ class PlaybackService : MediaLibraryService() {
                 /* handleAudioFocus = */ true,
             )
             .setHandleAudioBecomingNoisy(true)   // pause when headphones unplugged (§18)
+            // Stream backends that use HTTP Basic auth (Kodi/WebDAV/radio) via embedded credentials.
+            .setMediaSourceFactory(credentialMediaSourceFactory(this))
             .build()
 
         val sessionActivity = PendingIntent.getActivity(

@@ -163,6 +163,7 @@ private fun AddServerDialog(
                     FilterChip(type == ProviderType.JELLYFIN, { type = ProviderType.JELLYFIN }, { Text("Jellyfin") })
                     FilterChip(type == ProviderType.EMBY, { type = ProviderType.EMBY }, { Text("Emby") })
                     FilterChip(type == ProviderType.PLEX, { type = ProviderType.PLEX }, { Text("Plex") })
+                    FilterChip(type == ProviderType.KODI, { type = ProviderType.KODI }, { Text("Kodi") })
                 }
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(name, { name = it }, label = { Text("Nombre") }, singleLine = true, modifier = Modifier.fillMaxWidth())
