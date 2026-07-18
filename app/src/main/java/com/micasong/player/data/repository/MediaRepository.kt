@@ -291,6 +291,18 @@ class MediaRepository @Inject constructor(
         return plan.toAdd.size
     }
 
+    /** Delete every offline download (files + rows) — maintenance (spec §44 Limpiar). */
+    suspend fun clearAllDownloads() {
+        downloadDao.snapshot().forEach { row -> row.localPath?.let { runCatching { java.io.File(it).delete() } } }
+        downloadDao.deleteAll()
+    }
+
+    /** Total bytes and count of completed offline downloads, for the maintenance UI. */
+    suspend fun offlineUsage(): Pair<Int, Long> {
+        val rows = downloadDao.snapshot()
+        return rows.size to rows.sumOf { it.sizeBytes }
+    }
+
     /** Evict least-recently-used rolling downloads exceeding [maxBytes] (spec §34). */
     suspend fun evictRollingCache(maxBytes: Long) {
         val items = downloadDao.snapshot().map {

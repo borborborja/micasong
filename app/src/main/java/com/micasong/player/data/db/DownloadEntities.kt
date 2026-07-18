@@ -67,4 +67,7 @@ interface DownloadDao {
 
     @Query("DELETE FROM downloads WHERE trackId = :trackId")
     suspend fun delete(trackId: Long)
+
+    @Query("DELETE FROM downloads")
+    suspend fun deleteAll()
 }

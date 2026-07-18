@@ -76,6 +76,17 @@ class DownloadRuntimeTest {
     }
 
     @Test
+    fun `clearAllDownloads empties the table and reports usage`() = runBlocking {
+        db.musicDao().upsertTracks(listOf(track(1), track(2)))
+        repository.enqueueDownloads(listOf(1L, 2L))
+        assertEquals(2, repository.offlineUsage().first)
+
+        repository.clearAllDownloads()
+        assertTrue(repository.downloads.first().isEmpty())
+        assertEquals(0, repository.offlineUsage().first)
+    }
+
+    @Test
     fun `remove deletes the row`() = runBlocking {
         db.musicDao().upsertTracks(listOf(track(1)))
         repository.enqueueDownloads(listOf(1L), tier = CacheTier.PERMANENT)

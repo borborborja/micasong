@@ -406,12 +406,36 @@ fun AndroidAutoSettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel =
     }
 }
 
-/** Manage generated files — placeholder (§44). */
+/** Manage generated files / maintenance (spec §44): show cache usage and clear it. */
 @Composable
-fun GeneratedFilesScreen(onBack: () -> Unit) = InfoScreen(
-    "Administrar archivos generados", onBack,
-    "Registros de depuración y copias de seguridad generadas aparecerán aquí para compartirlos o borrarlos.",
-)
+fun GeneratedFilesScreen(onBack: () -> Unit, viewModel: GeneratedFilesViewModel = hiltViewModel()) {
+    val usage by viewModel.usage.collectAsStateWithLifecycle()
+    DetailScaffold("Archivos generados", onBack) {
+        item { CategoryHeading("Almacenamiento") }
+        item {
+            SettingRow(
+                title = "Descargas sin conexión",
+                subtitle = "${usage.offlineCount} archivos · ${usage.offlineBytes / (1024 * 1024)} MB",
+                onClick = viewModel::clearDownloads,
+            )
+        }
+        item {
+            SettingRow(
+                title = "Letras en caché",
+                subtitle = "${usage.lyricsCount} archivos · toca para vaciar",
+                onClick = viewModel::clearLyrics,
+            )
+        }
+        item {
+            SettingRow(
+                title = "Caché de imágenes",
+                subtitle = "${usage.imageCacheBytes / (1024 * 1024)} MB · toca para vaciar",
+                onClick = viewModel::clearImageCache,
+            )
+        }
+        item { InfoParagraph("Toca cada elemento para liberar ese espacio. Las descargas se pueden rehacer cuando quieras.") }
+    }
+}
 
 @Composable
 private fun InfoScreen(title: String, onBack: () -> Unit, text: String) {
