@@ -13,14 +13,17 @@ import com.micasong.player.data.audio.EqProfile
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /** Theme modes (spec §25). */
+@Serializable
 enum class ThemeMode { SYSTEM, LIGHT, DARK, BLACK }
 
 /** A snapshot of the user-configurable preferences the UI reacts to. */
+@Serializable
 data class UserSettings(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val dynamicColor: Boolean = true,
@@ -89,6 +92,20 @@ class SettingsRepository @Inject constructor(
     suspend fun setWeightedShuffle(enabled: Boolean) = edit { it[Keys.WEIGHTED_SHUFFLE] = enabled }
     suspend fun setCrossfade(ms: Int) = edit { it[Keys.CROSSFADE] = ms }
     suspend fun setExpandPlayer(enabled: Boolean) = edit { it[Keys.EXPAND_PLAYER] = enabled }
+
+    /** Overwrite every preference at once, used when restoring a backup (spec §43). */
+    suspend fun applySettings(s: UserSettings) = edit {
+        it[Keys.THEME_MODE] = s.themeMode.name
+        it[Keys.DYNAMIC_COLOR] = s.dynamicColor
+        it[Keys.SEED_COLOR] = s.seedColorArgb
+        it[Keys.ROUNDED] = s.roundedCorners
+        it[Keys.GAPLESS] = s.gaplessPlayback
+        it[Keys.WEIGHTED_SHUFFLE] = s.weightedShuffle
+        it[Keys.CROSSFADE] = s.crossfadeMs
+        it[Keys.EXPAND_PLAYER] = s.expandPlayerAutomatically
+        it[Keys.MIN_PLAYED_PCT] = s.minPlayedPercentToScrobble
+        it[Keys.MIX_SIZE] = s.personalMixSize
+    }
 
     private suspend fun edit(block: (androidx.datastore.preferences.core.MutablePreferences) -> Unit) {
         context.dataStore.edit(block)
