@@ -15,9 +15,27 @@ android {
         applicationId = "com.micasong.player"
         minSdk = 26
         targetSdk = 35
-        versionCode = 10
-        versionName = "0.0.10"
+        versionCode = 11
+        versionName = "0.0.11"
         vectorDrawables { useSupportLibrary = true }
+    }
+
+    // A fixed signing key so every build (local + CI) is signed identically, which lets you
+    // upgrade the installed app without uninstalling first. The keystore path/credentials can
+    // come from env vars (CI secret) or default to a local `micasong.keystore`. If no keystore
+    // is present the build falls back to the default per-machine debug key (so a fresh clone or
+    // a CI without the secret still builds).
+    val keystoreFile = file(System.getenv("SIGNING_KEYSTORE_FILE") ?: "micasong.keystore")
+    val hasSigningKey = keystoreFile.exists()
+    signingConfigs {
+        create("shared") {
+            if (hasSigningKey) {
+                storeFile = keystoreFile
+                storePassword = System.getenv("SIGNING_STORE_PASSWORD") ?: "micasong"
+                keyAlias = System.getenv("SIGNING_KEY_ALIAS") ?: "micasong"
+                keyPassword = System.getenv("SIGNING_KEY_PASSWORD") ?: "micasong"
+            }
+        }
     }
 
     buildTypes {
@@ -27,9 +45,11 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            if (hasSigningKey) signingConfig = signingConfigs.getByName("shared")
         }
         debug {
             applicationIdSuffix = ".debug"
+            if (hasSigningKey) signingConfig = signingConfigs.getByName("shared")
         }
     }
 
