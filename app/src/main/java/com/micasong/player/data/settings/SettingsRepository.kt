@@ -54,6 +54,8 @@ data class UserSettings(
     // Database (spec §44)
     val halfStars: Boolean = true,
     val ignoreArticlesOnSort: Boolean = true,
+    // Now Playing subtitle string template (spec §27)
+    val nowPlayingTemplate: String = "%artist%{ · %album%}",
 )
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
@@ -85,6 +87,7 @@ class SettingsRepository @Inject constructor(
         val SHOW_TRACK_NUMBER = booleanPreferencesKey("show_track_number")
         val HALF_STARS = booleanPreferencesKey("half_stars")
         val IGNORE_ARTICLES = booleanPreferencesKey("ignore_articles")
+        val NOW_PLAYING_TEMPLATE = stringPreferencesKey("now_playing_template")
     }
 
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
@@ -123,6 +126,7 @@ class SettingsRepository @Inject constructor(
             showTrackNumber = p[Keys.SHOW_TRACK_NUMBER] ?: true,
             halfStars = p[Keys.HALF_STARS] ?: true,
             ignoreArticlesOnSort = p[Keys.IGNORE_ARTICLES] ?: true,
+            nowPlayingTemplate = p[Keys.NOW_PLAYING_TEMPLATE] ?: "%artist%{ · %album%}",
         )
     }
 
@@ -147,6 +151,7 @@ class SettingsRepository @Inject constructor(
     suspend fun setShowTrackNumber(v: Boolean) = edit { it[Keys.SHOW_TRACK_NUMBER] = v }
     suspend fun setHalfStars(v: Boolean) = edit { it[Keys.HALF_STARS] = v }
     suspend fun setIgnoreArticles(v: Boolean) = edit { it[Keys.IGNORE_ARTICLES] = v }
+    suspend fun setNowPlayingTemplate(t: String) = edit { it[Keys.NOW_PLAYING_TEMPLATE] = t }
 
     /** Reset every preference to its default (spec §44 "Restaurar valores predeterminados"). */
     suspend fun resetToDefaults() {
@@ -177,6 +182,7 @@ class SettingsRepository @Inject constructor(
         it[Keys.SHOW_TRACK_NUMBER] = s.showTrackNumber
         it[Keys.HALF_STARS] = s.halfStars
         it[Keys.IGNORE_ARTICLES] = s.ignoreArticlesOnSort
+        it[Keys.NOW_PLAYING_TEMPLATE] = s.nowPlayingTemplate
     }
 
     private suspend fun edit(block: (androidx.datastore.preferences.core.MutablePreferences) -> Unit) {

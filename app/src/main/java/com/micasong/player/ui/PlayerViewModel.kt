@@ -27,9 +27,19 @@ import javax.inject.Inject
 class PlayerViewModel @Inject constructor(
     private val playback: PlaybackConnection,
     private val repository: MediaRepository,
+    private val settings: com.micasong.player.data.settings.SettingsRepository,
 ) : ViewModel() {
 
     val state = playback.state
+
+    /** Now Playing subtitle rendered from the user's string template (spec §27). */
+    val nowPlayingSubtitle: StateFlow<String> =
+        kotlinx.coroutines.flow.combine(state, settings.settings) { st, s ->
+            com.micasong.player.data.template.StringTemplateEngine.render(
+                s.nowPlayingTemplate,
+                mapOf("title" to st.title, "artist" to st.artist, "album" to st.album),
+            ).ifBlank { st.artist }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "")
 
     /** Lyrics of the current track (spec §41), fetched+cached when the track changes. */
     @OptIn(ExperimentalCoroutinesApi::class)

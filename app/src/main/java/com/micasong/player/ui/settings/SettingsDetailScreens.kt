@@ -15,6 +15,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -106,6 +107,18 @@ fun InterfazSettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hi
                 subtitle = "Al empezar la reproducción",
                 checked = state.expandPlayerAutomatically,
                 onChange = viewModel::setExpandPlayer,
+            )
+        }
+
+        item { CategoryHeading("Reproduciendo ahora") }
+        item {
+            OutlinedTextField(
+                value = state.nowPlayingTemplate,
+                onValueChange = viewModel::setNowPlayingTemplate,
+                label = { Text("Plantilla del subtítulo") },
+                supportingText = { Text("Campos: %artist% %album% %title% · bloque opcional { … }") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
             )
         }
 

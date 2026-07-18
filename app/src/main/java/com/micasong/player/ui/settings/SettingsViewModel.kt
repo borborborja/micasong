@@ -57,6 +57,7 @@ class SettingsViewModel @Inject constructor(
     fun setHalfStars(v: Boolean) = viewModelScope.launch { settings.setHalfStars(v) }
     fun setIgnoreArticles(v: Boolean) = viewModelScope.launch { settings.setIgnoreArticles(v) }
     fun resetToDefaults() = viewModelScope.launch { settings.resetToDefaults() }
+    fun setNowPlayingTemplate(t: String) = viewModelScope.launch { settings.setNowPlayingTemplate(t) }
 
     // ---- Offline / cache (spec §35) ----
     fun setDownloadsWifiOnly(v: Boolean) = viewModelScope.launch { settings.setDownloadsWifiOnly(v) }

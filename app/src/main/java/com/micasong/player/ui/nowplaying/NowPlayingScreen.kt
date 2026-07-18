@@ -179,8 +179,9 @@ fun NowPlayingScreen(
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center,
         )
+        val subtitle by viewModel.nowPlayingSubtitle.collectAsStateWithLifecycle()
         Text(
-            state.artist,
+            subtitle.ifBlank { state.artist },
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
