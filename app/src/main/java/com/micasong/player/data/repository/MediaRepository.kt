@@ -58,6 +58,7 @@ class MediaRepository @Inject constructor(
     private val providerDao: ProviderDao,
     private val downloadDao: DownloadDao,
     private val downloadTrigger: com.micasong.player.data.cache.DownloadTrigger,
+    private val radioDao: com.micasong.player.data.db.RadioDao,
 ) {
     // The local device provider is always present; server providers (Subsonic/Jellyfin/…) are
     // loaded from the database so they survive restarts (spec §4).
@@ -310,6 +311,20 @@ class MediaRepository @Inject constructor(
 
     suspend fun trackById(id: Long): Track? = musicDao.trackById(id)?.toDomain()
     fun trackFlow(id: Long): Flow<Track?> = musicDao.trackByIdFlow(id).map { it?.toDomain() }
+
+    // ---- Internet radio (spec §10) ----
+    val radioStations: Flow<List<com.micasong.player.data.radio.RadioStation>> =
+        radioDao.all().map { list -> list.map { it.toDomain() } }
+
+    suspend fun addRadioStation(name: String, streamUrl: String, homepage: String? = null): Long =
+        radioDao.upsert(
+            com.micasong.player.data.db.RadioStationEntity(name = name.trim(), streamUrl = streamUrl.trim(), homepage = homepage)
+        )
+
+    suspend fun deleteRadioStation(id: Long) = radioDao.delete(id)
+
+    suspend fun radioStationsSnapshot(): List<com.micasong.player.data.radio.RadioStation> =
+        radioDao.all().first().map { it.toDomain() }
 
     // ---- Lyrics (spec §41) ----
     private val lyricsDir = java.io.File(context.filesDir, "lyrics").apply { mkdirs() }

@@ -39,6 +39,17 @@ class LibraryViewModel @Inject constructor(
     // ---- Offline download (spec §35) ----
     fun downloadTrack(track: Track) = viewModelScope.launch { repository.enqueueDownloads(listOf(track.id)) }
 
+    // ---- Internet radio (spec §10) ----
+    val radioStations = repository.radioStations.stateIn(scope(), started(), emptyList<com.micasong.player.data.radio.RadioStation>())
+
+    fun addRadioStation(name: String, url: String) {
+        if (name.isNotBlank() && url.isNotBlank()) viewModelScope.launch { repository.addRadioStation(name, url) }
+    }
+
+    fun deleteRadioStation(id: Long) = viewModelScope.launch { repository.deleteRadioStation(id) }
+
+    fun playRadio(clickedId: Long) = playback.playRadio(radioStations.value, clickedId)
+
     // ---- Playlist management (spec §32) ----
     fun createPlaylist(name: String) {
         if (name.isNotBlank()) viewModelScope.launch { repository.createPlaylist(name.trim()) }

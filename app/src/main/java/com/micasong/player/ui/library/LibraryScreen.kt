@@ -24,7 +24,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PlaylistPlay
+import androidx.compose.material.icons.filled.Radio
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.AlertDialog
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.DropdownMenu
@@ -59,7 +62,7 @@ import com.micasong.player.ui.components.MediaArtwork
 import com.micasong.player.ui.components.TrackRow
 import com.micasong.player.ui.components.formatDuration
 
-private val tabs = listOf("Álbumes", "Artistas", "Pistas", "Géneros", "Listas")
+private val tabs = listOf("Álbumes", "Artistas", "Pistas", "Géneros", "Listas", "Radios")
 
 @Composable
 fun LibraryScreen(
@@ -91,6 +94,7 @@ fun LibraryScreen(
             2 -> SongsTab(viewModel, onAddToPlaylist = { addToPlaylistTrack = it })
             3 -> GenresTab(viewModel.genres.collectAsStateWithLifecycle().value, onOpenGenre)
             4 -> PlaylistsTab(playlists, onOpenPlaylist, onCreate = { showCreate = true }, onNewSmart = onNewSmartPlaylist)
+            5 -> RadiosTab(viewModel)
         }
     }
 
@@ -283,6 +287,70 @@ private fun PlaylistsTab(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun RadiosTab(viewModel: LibraryViewModel) {
+    val stations by viewModel.radioStations.collectAsStateWithLifecycle()
+    var showAdd by remember { mutableStateOf(false) }
+    var name by remember { mutableStateOf("") }
+    var url by remember { mutableStateOf("") }
+
+    LazyColumn {
+        item {
+            Row(
+                Modifier.fillMaxWidth().clickable { showAdd = true }.padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Filled.Add, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.size(12.dp))
+                Text("Añadir emisora", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary)
+            }
+        }
+        if (stations.isEmpty()) {
+            item {
+                Text(
+                    "No hay emisoras de radio. Añade una con su URL de streaming.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(16.dp),
+                )
+            }
+        }
+        items(stations, key = { it.id }) { station ->
+            Row(
+                Modifier.fillMaxWidth().clickable { viewModel.playRadio(station.id) }.padding(horizontal = 16.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Filled.Radio, contentDescription = null)
+                Spacer(Modifier.size(12.dp))
+                Text(station.name, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                IconButton(onClick = { viewModel.deleteRadioStation(station.id) }) {
+                    Icon(Icons.Filled.Close, contentDescription = "Eliminar emisora")
+                }
+            }
+        }
+    }
+
+    if (showAdd) {
+        AlertDialog(
+            onDismissRequest = { showAdd = false },
+            title = { Text("Nueva emisora") },
+            text = {
+                Column {
+                    OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Nombre") }, singleLine = true)
+                    Spacer(Modifier.size(8.dp))
+                    OutlinedTextField(value = url, onValueChange = { url = it }, label = { Text("URL de streaming") }, singleLine = true)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.addRadioStation(name, url); name = ""; url = ""; showAdd = false
+                }) { Text("Añadir") }
+            },
+            dismissButton = { TextButton(onClick = { showAdd = false }) { Text("Cancelar") } },
+        )
     }
 }
 

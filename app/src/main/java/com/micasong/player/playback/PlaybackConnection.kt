@@ -239,6 +239,30 @@ class PlaybackConnection @Inject constructor(
 
     fun playTrack(track: Track) = playTracks(listOf(track))
 
+    /** Play internet radio (spec §10): queue all stations so skip cycles, leading with the tapped one. */
+    fun playRadio(stations: List<com.micasong.player.data.radio.RadioStation>, clickedId: Long) {
+        val c = controller ?: return
+        if (stations.isEmpty()) return
+        val ordered = com.micasong.player.data.radio.InternetRadio.orderedQueue(stations, clickedId)
+        val items = ordered.map { st ->
+            MediaItem.Builder()
+                .setMediaId("radio/${st.id}")
+                .setUri(st.streamUrl)
+                .setMediaMetadata(
+                    androidx.media3.common.MediaMetadata.Builder()
+                        .setTitle(st.name)
+                        .setIsPlayable(true)
+                        .setMediaType(androidx.media3.common.MediaMetadata.MEDIA_TYPE_RADIO_STATION)
+                        .apply { st.imageUrl?.let { setArtworkUri(Uri.parse(it)) } }
+                        .build()
+                )
+                .build()
+        }
+        c.setMediaItems(items, 0, 0L)
+        c.prepare()
+        c.play()
+    }
+
     fun addToQueue(tracks: List<Track>) {
         val c = controller ?: return
         c.addMediaItems(tracks.toPlayableItems())

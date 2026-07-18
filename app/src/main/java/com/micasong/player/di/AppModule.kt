@@ -7,6 +7,7 @@ import com.micasong.player.data.db.MiCaSongDatabase
 import com.micasong.player.data.db.MusicDao
 import com.micasong.player.data.db.PlaylistDao
 import com.micasong.player.data.db.ProviderDao
+import com.micasong.player.data.db.RadioDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -36,4 +37,7 @@ object AppModule {
 
     @Provides
     fun provideDownloadDao(db: MiCaSongDatabase): DownloadDao = db.downloadDao()
+
+    @Provides
+    fun provideRadioDao(db: MiCaSongDatabase): RadioDao = db.radioDao()
 }
