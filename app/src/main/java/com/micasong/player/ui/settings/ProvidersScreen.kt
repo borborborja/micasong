@@ -1,5 +1,7 @@
 package com.micasong.player.ui.settings
 
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -153,10 +155,14 @@ private fun AddServerDialog(
         title = { Text("Añadir servidor") },
         text = {
             Column {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    Modifier.horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
                     FilterChip(type == ProviderType.SUBSONIC, { type = ProviderType.SUBSONIC }, { Text("Subsonic") })
                     FilterChip(type == ProviderType.JELLYFIN, { type = ProviderType.JELLYFIN }, { Text("Jellyfin") })
                     FilterChip(type == ProviderType.EMBY, { type = ProviderType.EMBY }, { Text("Emby") })
+                    FilterChip(type == ProviderType.PLEX, { type = ProviderType.PLEX }, { Text("Plex") })
                 }
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(name, { name = it }, label = { Text("Nombre") }, singleLine = true, modifier = Modifier.fillMaxWidth())
@@ -164,7 +170,15 @@ private fun AddServerDialog(
                 OutlinedTextField(user, { user = it }, label = { Text("Usuario") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(
                     secret, { secret = it },
-                    label = { Text(if (type == ProviderType.JELLYFIN) "Token / contraseña" else "Contraseña") },
+                    label = {
+                        Text(
+                            when (type) {
+                                ProviderType.PLEX -> "Token de Plex (X-Plex-Token)"
+                                ProviderType.JELLYFIN, ProviderType.EMBY -> "Token / contraseña"
+                                else -> "Contraseña"
+                            }
+                        )
+                    },
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
                     modifier = Modifier.fillMaxWidth(),

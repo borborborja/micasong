@@ -78,6 +78,7 @@ class MediaRepository @Inject constructor(
             when (config.type) {
                 ProviderType.JELLYFIN -> JellyfinProvider(config)
                 ProviderType.EMBY -> com.micasong.player.data.provider.EmbyProvider(config)
+                ProviderType.PLEX -> com.micasong.player.data.provider.PlexProvider(config)
                 else -> SubsonicProvider(config)   // Subsonic/OpenSubsonic/Navidrome
             }
         }
