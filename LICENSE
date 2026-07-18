@@ -19,10 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
----
-
-MiCaSong reimplements the *features* of Symfonium (a third-party trademark by
-Tolriq) with original code, name, icon and text. It contains no code or graphic
-resources from the original application. "Symfonium" is a trademark of its owner
-and is used here only to describe the reference application.

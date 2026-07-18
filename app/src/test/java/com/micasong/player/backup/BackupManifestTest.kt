@@ -61,6 +61,6 @@ class BackupManifestTest {
         val json = Json.encodeToString(BackupManifest.serializer(), manifest)
         val restored = Json.decodeFromString(BackupManifest.serializer(), json)
         assertEquals(manifest, restored)
-        assertEquals("symfbkpz", BackupManifest.EXTENSION)
+        assertEquals("micabkp", BackupManifest.EXTENSION)
     }
 }

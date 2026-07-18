@@ -15,6 +15,6 @@ build/
 *.keystore
 !debug.keystore
 
-# Third-party reference material (copyrighted Symfonium screenshots + spec) — NOT for the public repo.
+# Local design/reference material — kept out of the public repo.
 /instruccions/
 

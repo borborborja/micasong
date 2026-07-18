@@ -8,8 +8,8 @@ import javax.crypto.spec.PBEKeySpec
 import javax.crypto.spec.SecretKeySpec
 
 /**
- * Password-based encryption for the `.symfbkpz`-style backup archive (spec §43 — encrypted with a
- * password because it may contain provider credentials). Uses PBKDF2 key derivation and
+ * Password-based encryption for the MiCaSong `.micabkp` backup archive — encrypted with a
+ * password because it may contain provider credentials. Uses PBKDF2 key derivation and
  * AES-256-GCM (authenticated). The output blob is `salt(16) | iv(12) | ciphertext+tag`; decryption
  * returns null on a wrong password or tampering (the GCM tag fails). Pure JDK crypto — testable.
  */

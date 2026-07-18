@@ -40,7 +40,7 @@ data class BackupManifest(
     val containsSecrets: Boolean get() = includes(BackupContent.PROVIDERS)
 
     companion object {
-        const val EXTENSION = "symfbkpz"
+        const val EXTENSION = "micabkp"
     }
 }
 
