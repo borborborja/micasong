@@ -41,6 +41,16 @@ data class NowPlayingState(
     val speed: Float = 1f,
 )
 
+/** One entry of the playback queue, for the "Colas" list (spec §13). */
+data class QueueItem(
+    val index: Int,
+    val mediaId: String,
+    val title: String,
+    val artist: String,
+    val artworkUri: String?,
+    val isCurrent: Boolean,
+)
+
 /**
  * UI-facing bridge to [PlaybackService]. Owns a [MediaController], mirrors its state into a
  * [StateFlow] the Compose layer collects, and translates UI intents (play these tracks,
@@ -60,6 +70,10 @@ class PlaybackConnection @Inject constructor(
     private val _sleepRemainingMs = MutableStateFlow<Long?>(null)
     val sleepRemainingMs: StateFlow<Long?> = _sleepRemainingMs.asStateFlow()
     private var sleepJob: Job? = null
+
+    /** The full playback queue (spec §13), refreshed on every player event. */
+    private val _queue = MutableStateFlow<List<QueueItem>>(emptyList())
+    val queue: StateFlow<List<QueueItem>> = _queue.asStateFlow()
 
     init {
         val future = MediaController.Builder(context, playbackSessionToken(context)).buildAsync()
@@ -108,6 +122,22 @@ class PlaybackConnection @Inject constructor(
         )
         // Keep the home-screen widget (spec §40) in sync with playback.
         NowPlayingWidget.updateAll(context, _state.value)
+        refreshQueue(c)
+    }
+
+    private fun refreshQueue(c: MediaController) {
+        val current = c.currentMediaItemIndex
+        _queue.value = (0 until c.mediaItemCount).map { i ->
+            val mi = c.getMediaItemAt(i)
+            QueueItem(
+                index = i,
+                mediaId = mi.mediaId,
+                title = mi.mediaMetadata.title?.toString().orEmpty(),
+                artist = mi.mediaMetadata.artist?.toString().orEmpty(),
+                artworkUri = mi.mediaMetadata.artworkUri?.toString(),
+                isCurrent = i == current,
+            )
+        }
     }
 
     // ---- intents ----
@@ -173,6 +203,20 @@ class PlaybackConnection @Inject constructor(
         sleepJob?.cancel()
         sleepJob = null
         _sleepRemainingMs.value = null
+    }
+
+    /** Jump to queue position [index] and start playing it (spec §13). */
+    fun jumpTo(index: Int) {
+        val c = controller ?: return
+        if (index !in 0 until c.mediaItemCount) return
+        c.seekTo(index, 0L)
+        c.play()
+    }
+
+    /** Remove the queue entry at [index]; the player keeps playing the current item. */
+    fun removeQueueItem(index: Int) {
+        val c = controller ?: return
+        if (index in 0 until c.mediaItemCount) c.removeMediaItem(index)
     }
 
     fun cycleRepeat() {

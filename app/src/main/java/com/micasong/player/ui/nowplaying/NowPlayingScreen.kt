@@ -13,13 +13,17 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bedtime
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.QueueMusic
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.Shuffle
@@ -29,6 +33,11 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.filled.StarHalf
 import androidx.compose.foundation.clickable
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilledIconButton
@@ -67,9 +76,11 @@ fun NowPlayingScreen(
     val rating by viewModel.currentRating.collectAsStateWithLifecycle()
     val isFavorite by viewModel.currentFavorite.collectAsStateWithLifecycle()
     val sleepRemaining by viewModel.sleepRemainingMs.collectAsStateWithLifecycle()
+    val queue by viewModel.queue.collectAsStateWithLifecycle()
 
     var scrubbing by remember { mutableFloatStateOf(-1f) }
     var sleepMenuOpen by remember { mutableStateOf(false) }
+    var showQueue by remember { mutableStateOf(false) }
 
     Column(
         Modifier
@@ -87,6 +98,9 @@ fun NowPlayingScreen(
                 modifier = Modifier.weight(1f),
                 textAlign = TextAlign.Center,
             )
+            IconButton(onClick = { showQueue = true }) {
+                Icon(Icons.Filled.QueueMusic, contentDescription = "Cola de reproducción")
+            }
             Box {
                 IconButton(onClick = { sleepMenuOpen = true }) {
                     Icon(
@@ -212,6 +226,65 @@ fun NowPlayingScreen(
             Spacer(Modifier.height(16.dp))
             RatingBar(rating = rating, onRate = viewModel::setRating)
         }
+    }
+
+    if (showQueue) {
+        QueueSheet(
+            queue = queue,
+            onDismiss = { showQueue = false },
+            onJump = viewModel::jumpToQueueItem,
+            onRemove = viewModel::removeQueueItem,
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun QueueSheet(
+    queue: List<com.micasong.player.playback.QueueItem>,
+    onDismiss: () -> Unit,
+    onJump: (Int) -> Unit,
+    onRemove: (Int) -> Unit,
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState()) {
+        Text(
+            "Cola de reproducción (${queue.size})",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+        )
+        LazyColumn(Modifier.fillMaxWidth()) {
+            items(queue, key = { it.mediaId + it.index }) { item ->
+                ListItem(
+                    headlineContent = {
+                        Text(
+                            item.title,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            fontWeight = if (item.isCurrent) FontWeight.Bold else FontWeight.Normal,
+                        )
+                    },
+                    supportingContent = {
+                        Text(item.artist, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    },
+                    leadingContent = {
+                        MediaArtwork(item.artworkUri, Modifier.size(44.dp), corner = 6)
+                    },
+                    trailingContent = {
+                        IconButton(onClick = { onRemove(item.index) }) {
+                            Icon(Icons.Filled.Close, contentDescription = "Quitar de la cola")
+                        }
+                    },
+                    colors = if (item.isCurrent) {
+                        ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+                    } else {
+                        ListItemDefaults.colors()
+                    },
+                    modifier = Modifier.clickable { onJump(item.index); onDismiss() },
+                )
+            }
+        }
+        Spacer(Modifier.height(16.dp))
     }
 }
 

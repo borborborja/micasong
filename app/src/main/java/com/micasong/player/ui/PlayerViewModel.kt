@@ -60,6 +60,12 @@ class PlayerViewModel @Inject constructor(
     fun setSleepTimer(minutes: Int) = playback.setSleepTimer(minutes)
     fun cancelSleepTimer() = playback.cancelSleepTimer()
 
+    /** The playback queue for the "Colas" sheet (spec §13). */
+    val queue = playback.queue
+
+    fun jumpToQueueItem(index: Int) = playback.jumpTo(index)
+    fun removeQueueItem(index: Int) = playback.removeQueueItem(index)
+
     fun togglePlayPause() = playback.togglePlayPause()
     fun next() = playback.next()
     fun previous() = playback.previous()
