@@ -127,7 +127,7 @@ with both APKs attached for download.
 
 ## Tests
 
-A **JVM unit-test suite** (~265 tests, all green) covers the pure-logic engines — smart filters,
+A **JVM unit-test suite** (~273 tests, all green) covers the pure-logic engines — smart filters,
 playlists, mixes, string templates, LRC lyrics, ReplayGain, Smart Queue/Flow, fade curves, multiple
 queues, tag/NFO/M3U-PLS parsers, offline cache, Subsonic/Jellyfin auth, differential + server sync,
 AutoEQ, equalizer model, backup crypto, waveform/smart-fades, playback marking, sleep timer,
@@ -135,7 +135,7 @@ chapters, Now Playing fields, transcode, renderers, weighted shuffle, media-sess
 internet radio, app styles/themes/profiles, and audiophile output negotiation.
 
 ```bash
-./gradlew :app:testFossDebugUnitTest   # → 265 passing, 0 failures
+./gradlew :app:testFossDebugUnitTest   # → 273 passing, 0 failures
 ```
 
 ## Using the app
