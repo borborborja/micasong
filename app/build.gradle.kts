@@ -15,8 +15,8 @@ android {
         applicationId = "com.micasong.player"
         minSdk = 26
         targetSdk = 35
-        versionCode = 12
-        versionName = "0.0.12"
+        versionCode = 13
+        versionName = "0.0.13"
         vectorDrawables { useSupportLibrary = true }
     }
 

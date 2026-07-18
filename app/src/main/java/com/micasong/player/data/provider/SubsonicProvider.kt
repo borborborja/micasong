@@ -37,12 +37,75 @@ class SubsonicProvider(
 
     private val clientName = "MiCaSong"
 
-    /** Build a fully-authenticated endpoint URL (salted token auth, spec §47). */
-    fun endpoint(view: String, params: Map<String, String> = emptyMap()): String {
+    // Auto-negotiated from the server's ping response (spec §5.1, §46): the API version to request,
+    // whether to use legacy auth, and whether OpenSubsonic extensions are available.
+    @Volatile private var apiVersion: String = SubsonicAuth.API_VERSION
+    @Volatile private var useLegacyAuth: Boolean = false
+    @Volatile var openSubsonic: Boolean = false
+        private set
+
+    /** Build a fully-authenticated endpoint URL, adapting to the negotiated version/auth (spec §47). */
+    fun endpoint(view: String, params: Map<String, String> = emptyMap()): String =
+        endpointWith(view, params, legacy = useLegacyAuth, version = apiVersion)
+
+    private fun endpointWith(view: String, params: Map<String, String>, legacy: Boolean, version: String): String {
         val base = config.primaryUrl ?: return ""
-        val salt = SubsonicAuth.randomSalt()
-        val auth = SubsonicAuth.authParams(config.username ?: "", config.secret ?: "", salt, clientName)
+        val user = config.username ?: ""
+        val secret = config.secret ?: ""
+        val auth = if (legacy) {
+            SubsonicAuth.legacyAuthParams(user, secret, clientName, version)
+        } else {
+            SubsonicAuth.authParams(user, secret, SubsonicAuth.randomSalt(), clientName, version)
+        }
         return SubsonicAuth.endpointUrl(base, view, auth + params)
+    }
+
+    /**
+     * Ping the server and adapt to it (spec §5.1): read its API version, detect OpenSubsonic, and
+     * fall back to legacy auth if token auth is rejected. Returns null on success or a user-facing
+     * error. Safe to call before every sync — it's one cheap request.
+     */
+    suspend fun negotiate(): String? = withContext(Dispatchers.IO) {
+        if (config.primaryUrl.isNullOrBlank()) return@withContext "Introduce la URL del servidor."
+        // Probe with token auth at the minimum version first (any server ≥1.13 accepts it).
+        val tokenResp = getJson(endpointWith("ping", emptyMap(), legacy = false, version = SubsonicAuth.API_VERSION))
+            ?.optJSONObject("subsonic-response")
+            ?: return@withContext "No se pudo conectar. Revisa la URL y el puerto, y que el servidor esté encendido."
+
+        if (tokenResp.optString("status") == "ok") {
+            useLegacyAuth = false
+            adopt(tokenResp)
+            return@withContext null
+        }
+
+        // Token rejected — if it's an auth-method problem, retry with legacy auth.
+        val code = tokenResp.optJSONObject("error")?.optInt("code")
+        if (code == 41 || code == 42 || code == 44) {
+            val legacyResp = getJson(endpointWith("ping", emptyMap(), legacy = true, version = SubsonicAuth.API_VERSION))
+                ?.optJSONObject("subsonic-response")
+            if (legacyResp?.optString("status") == "ok") {
+                useLegacyAuth = true
+                adopt(legacyResp)
+                return@withContext null
+            }
+        }
+        errorMessage(tokenResp)
+    }
+
+    /** Adopt the server's reported version + OpenSubsonic support from a successful ping. */
+    private fun adopt(resp: org.json.JSONObject) {
+        resp.optString("version").ifBlank { null }?.let { apiVersion = it }
+        openSubsonic = resp.optBoolean("openSubsonic", false)
+    }
+
+    private fun errorMessage(resp: org.json.JSONObject): String {
+        val error = resp.optJSONObject("error")
+        return when (error?.optInt("code")) {
+            40 -> "Usuario o contraseña incorrectos."
+            41, 42, 44 -> "El servidor no acepta este método de autenticación. Prueba con una clave API."
+            30 -> "La versión del servidor es incompatible."
+            else -> error?.optString("message")?.ifBlank { null } ?: "El servidor rechazó la conexión."
+        }
     }
 
     override suspend fun sync(onProgress: (Float, String) -> Unit): ProviderSnapshot =
@@ -53,10 +116,10 @@ class SubsonicProvider(
             val genres = LinkedHashMap<String, Int>()
             try {
                 onProgress(0f, "Conectando")
-                // Verify reachability AND authentication first; a failed status means empty library.
-                val ping = getJson(endpoint("ping"))?.optJSONObject("subsonic-response")
-                if (ping?.optString("status") != "ok") {
-                    Log.w("SubsonicProvider", "ping not ok: ${ping?.optJSONObject("error")}")
+                // Adapt to the server (version, OpenSubsonic, legacy auth) and verify auth first.
+                val error = negotiate()
+                if (error != null) {
+                    Log.w("SubsonicProvider", "connection failed: $error")
                     return@withContext ProviderSnapshot(emptyList(), emptyList(), emptyList(), emptyList())
                 }
 
@@ -144,27 +207,21 @@ class SubsonicProvider(
      * user-facing error otherwise (spec §5.1). Used when adding a provider so misconfigurations
      * surface immediately instead of producing a silent empty library.
      */
-    suspend fun testConnection(): String? = withContext(Dispatchers.IO) {
-        if (config.primaryUrl.isNullOrBlank()) return@withContext "Introduce la URL del servidor."
-        val json = getJson(endpoint("ping"))
-            ?: return@withContext "No se pudo conectar. Revisa la URL y el puerto, y que el servidor esté encendido."
-        val resp = json.optJSONObject("subsonic-response")
-            ?: return@withContext "La respuesta no parece de un servidor Subsonic/OpenSubsonic."
-        if (resp.optString("status") == "ok") return@withContext null
-        val error = resp.optJSONObject("error")
-        when (error?.optInt("code")) {
-            40 -> "Usuario o contraseña incorrectos."
-            41, 44 -> "El servidor no acepta este método de autenticación. Prueba con una clave API o activa la autenticación heredada."
-            30 -> "La versión del servidor es incompatible."
-            else -> error?.optString("message")?.ifBlank { null } ?: "El servidor rechazó la conexión."
-        }
-    }
+    suspend fun testConnection(): String? = negotiate()
 
-    /** Fetch lyrics via OpenSubsonic getLyricsBySongId (spec §41); the server id is in the URL. */
+    /** Fetch lyrics, adapting to the server: OpenSubsonic getLyricsBySongId, else legacy getLyrics. */
     override suspend fun lyrics(track: TrackEntity): String? = withContext(Dispatchers.IO) {
-        val serverId = android.net.Uri.parse(track.mediaUri).getQueryParameter("id") ?: return@withContext null
-        val json = getJson(endpoint("getLyricsBySongId", mapOf("id" to serverId))) ?: return@withContext null
-        SubsonicMappers.parseLyrics(json)
+        val serverId = android.net.Uri.parse(track.mediaUri).getQueryParameter("id")
+        // Preferred: OpenSubsonic synced lyrics by song id.
+        if (serverId != null) {
+            getJson(endpoint("getLyricsBySongId", mapOf("id" to serverId)))
+                ?.let { SubsonicMappers.parseLyrics(it) }
+                ?.let { return@withContext it }
+        }
+        // Fallback: legacy getLyrics by artist + title (plain text), for older servers.
+        val artist = track.artistName ?: return@withContext null
+        getJson(endpoint("getLyrics", mapOf("artist" to artist, "title" to track.title)))
+            ?.let { SubsonicMappers.parseLyrics(it) }
     }
 
     /** Submit a scrobble for a completed play (spec §47 scrobble.view). */
