@@ -149,10 +149,13 @@ library. Add remote servers from **Settings → Media providers**. Connect the p
 Drive playback via the broadcast API (Tasker / adb):
 
 ```bash
-adb shell am broadcast -a com.micasong.api.MEDIA_COMMAND --es COMMAND play
-adb shell am broadcast -a com.micasong.api.MEDIA_COMMAND --es COMMAND next
-adb shell am broadcast -a com.micasong.api.MEDIA_SYNC
+# Target the package (-p) — Android does not deliver implicit broadcasts to manifest receivers.
+adb shell am broadcast -p com.micasong.player -a com.micasong.api.MEDIA_COMMAND --es COMMAND play
+adb shell am broadcast -p com.micasong.player -a com.micasong.api.MEDIA_COMMAND --es COMMAND next
+adb shell am broadcast -p com.micasong.player -a com.micasong.api.MEDIA_SYNC
 ```
+
+Tasker and other automation should likewise set the target package on the intent.
 
 ## License
 
