@@ -7,6 +7,7 @@ import androidx.media3.session.MediaController
 import com.google.common.util.concurrent.MoreExecutors
 import com.micasong.player.data.model.Track
 import com.micasong.player.data.smart.WeightedShuffle
+import com.micasong.player.widget.NowPlayingWidget
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -96,6 +97,8 @@ class PlaybackConnection @Inject constructor(
             queueSize = c.mediaItemCount,
             queueIndex = c.currentMediaItemIndex,
         )
+        // Keep the home-screen widget (spec §40) in sync with playback.
+        NowPlayingWidget.updateAll(context, _state.value)
     }
 
     // ---- intents ----

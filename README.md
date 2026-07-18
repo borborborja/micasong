@@ -16,7 +16,7 @@ la bíblia (§1).
 ## Estat actual
 
 L'app **compila** (`assembleDebug`), **passa lint** sense errors (incloent-hi la validació
-d'apps de mitjans d'Android Auto) i té una **suite de 246 tests unitaris** que verifica ~36 motors de lògica pura (smart filters,
+d'apps de mitjans d'Android Auto) i té una **suite de 257 tests unitaris** que verifica ~38 motors de lògica pura (smart filters,
 smart playlists, mescles personals, string templates, LRC, ReplayGain, Smart Queue/Flow, corbes
 de fundit, cues múltiples, tags, Artist NFO, cache offline, auth Subsonic, M3U/PLS, sync diferencial,
 AutoEQ, backup, waveform/smart-fades, marcatge de reproducció, sleep timer, capítols, camps Now Playing,
@@ -52,6 +52,9 @@ sync de servidor amb preservació d'estat, model d'equalitzador): `./gradlew :ap
 | Estat d'usuari: favorits, ratings, **play counts**, **resume points** | §10, §20 | ✅ |
 | **Marcatge de reproducció** (llindars played/skip/resume + rollback audiollibre, connectat al listener) | §11, §20 | ✅ + tests |
 | **Android Auto**: `MediaLibraryService` + arbre de navegació (Inicio/Recientes/Biblioteca/Favoritos) + cerca per veu | §38 | ✅ |
+| **Widget de pantalla d'inici** (now-playing + prev/play/next via broadcast, actualitzat en viu) | §40 | ✅ |
+| **Backup/restore xifrat** (arxiu ZIP + AES-256-GCM amb PBKDF2, contingut seleccionable) | §43 | ✅ + tests |
+| **Config Wear OS** (qualitat descàrrega/streaming, mode secret, tile, rotary) | §39 | ✅ + tests |
 | **API broadcast** (Tasker): parser tipat de totes les accions + dispatch (control, sync, mescles, force_provider_connection) | §42 | ✅ + tests |
 | Temes Material 3 + **Material You** + modes Clar/Fosc/Negre | §25 | ✅ |
 | **Temes personalitzats JSON** (import/export, compat. Material Theme Builder, parser hex) | §25 | ✅ + tests |
@@ -94,7 +97,7 @@ sync de servidor amb preservació d'estat, model d'equalitzador): `./gradlew :ap
 
 - **Fase 2** ✅ — Subsonic/OpenSubsonic + Jellyfin, onboarding de servidors, sync diferencial amb preservació d'estat, image cache, cerca. *(Pendents: proveïdors Plex/Emby/Kodi/SMB/WebDAV/núvol.)*
 - **Fase 4** ✅ (nucli) — equalitzador complet (model+UI+persistència+aplicació), AutoEQ, ReplayGain, corbes de fundit/smart fades, cues múltiples, Smart Queue/Flow, LRC, sleep timer, capítols, transcode-decision. *(Pendents amb deps pesades: PEQ/256 bandes, aplicació real de crossfade, transcode FFmpeg, ReplayGain per-pista via TagLib, lletres a la UI.)*
-- **Fase 5** — Cast (Chromecast/UPnP/Sonos/Remote), widgets, Wear OS, backup/restore `.symfbkpz`.
+- **Fase 5** ✅ (nucli) — Android Auto, API broadcast completa, widget de pantalla d'inici, backup/restore xifrat, config Wear OS, temes/estils/profiles import-export, model de renderers. *(Pendents amb deps/mòduls dedicats: integració real de Cast (CastContext al flavor full + lib UPnP), app companion Wear OS, UI de backup + empaquetat del fitxer de BD.)*
 - **Fase 6** — Motor audiòfil Hi-Res/bit-perfect, DSD, pipeline DSP 64-bit (§11-bis) — *requereix maquinari real (DACs/DAPs); opcional segons la bíblia*.
 
 ---

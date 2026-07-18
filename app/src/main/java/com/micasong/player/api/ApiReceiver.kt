@@ -95,5 +95,9 @@ class ApiReceiver : BroadcastReceiver() {
     companion object {
         private const val TAG = "ApiReceiver"
         private const val PROVIDER_ID_BASE = 1000L
+
+        // Used by the home-screen widget to drive playback (spec §40, §42).
+        const val ACTION_MEDIA_COMMAND = "${ApiCommandParser.PREFIX}.MEDIA_COMMAND"
+        const val EXTRA_COMMAND = "COMMAND"
     }
 }
