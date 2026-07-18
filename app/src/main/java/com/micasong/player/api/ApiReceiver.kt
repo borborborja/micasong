@@ -5,10 +5,12 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import com.micasong.player.data.repository.MediaRepository
+import com.micasong.player.data.settings.SettingsRepository
 import com.micasong.player.playback.PlaybackConnection
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -22,6 +24,7 @@ class ApiReceiver : BroadcastReceiver() {
 
     @Inject lateinit var playback: PlaybackConnection
     @Inject lateinit var repository: MediaRepository
+    @Inject lateinit var settings: SettingsRepository
 
     private val scope = CoroutineScope(Dispatchers.Main)
 
@@ -32,6 +35,7 @@ class ApiReceiver : BroadcastReceiver() {
             is ApiCommand.MediaSync -> runAsync { repository.syncAll() }
             is ApiCommand.MediaStart -> handleStart(command)
             is ApiCommand.CustomAction -> handleCustom(command)
+            is ApiCommand.ChangeSetting -> handleChangeSetting(command)
             else -> Log.d(TAG, "Unhandled API command: $command")
         }
     }
@@ -39,12 +43,35 @@ class ApiReceiver : BroadcastReceiver() {
     private fun handleControl(cmd: ApiCommand.MediaControl) {
         when (cmd.command) {
             "play", "pause" -> playback.togglePlayPause()
+            "stop" -> playback.togglePlayPause()
             "next" -> playback.next()
             "previous" -> playback.previous()
             "shuffle" -> playback.toggleShuffle()
             "repeat" -> playback.cycleRepeat()
             "seek" -> cmd.intParam?.let { playback.seekTo(it * 1000L) }
+            "seek_relative" -> cmd.intParam?.let {
+                playback.seekTo((playback.state.value.positionMs + it * 1000L).coerceAtLeast(0))
+            }
+            "set_sleeptimer" -> playback.setSleepTimer(cmd.intParam ?: 0)
+            "remove_sleeptimer" -> playback.cancelSleepTimer()
             else -> Log.d(TAG, "Unhandled media command: ${cmd.command}")
+        }
+    }
+
+    /** Apply a setting change from the automation API (spec §42 CHANGE_SETTINGS). */
+    private fun handleChangeSetting(cmd: ApiCommand.ChangeSetting) {
+        val on = (cmd.intParam ?: 0) != 0
+        runAsync {
+            when (cmd.setting) {
+                "gapless" -> settings.setGapless(on)
+                "weighted_shuffle" -> settings.setWeightedShuffle(on)
+                "expand_player" -> settings.setExpandPlayer(on)
+                "crossfade" -> settings.setCrossfade(cmd.intParam ?: 0)
+                "downloads_wifi_only" -> settings.setDownloadsWifiOnly(on)
+                "auto_cache_favorites" -> settings.setAutoCacheFavorites(on)
+                "rolling_cache_mb" -> settings.setRollingCacheMb(cmd.intParam ?: 1024)
+                else -> Log.d(TAG, "Unhandled setting: ${cmd.setting}")
+            }
         }
     }
 
@@ -65,7 +92,10 @@ class ApiReceiver : BroadcastReceiver() {
                 val connection = cmd.activeConnection ?: 1
                 runAsync { repository.setActiveConnection(rowId, connection) }
             }
-            "cleanup_offline_cache", "load_media_queue" -> runAsync { repository.syncAll() }
+            "cleanup_offline_cache" -> runAsync {
+                val maxBytes = settings.settings.first().rollingCacheMb * 1024L * 1024L
+                repository.evictRollingCache(maxBytes)
+            }
             else -> Log.d(TAG, "Unhandled custom action: ${cmd.action}")
         }
     }
