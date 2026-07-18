@@ -16,7 +16,7 @@ la bíblia (§1).
 ## Estat actual
 
 L'app **compila** (`assembleDebug`), **passa lint** sense errors (incloent-hi la validació
-d'apps de mitjans d'Android Auto) i té una **suite de 223 tests unitaris** que verifica ~33 motors de lògica pura (smart filters,
+d'apps de mitjans d'Android Auto) i té una **suite de 233 tests unitaris** que verifica ~34 motors de lògica pura (smart filters,
 smart playlists, mescles personals, string templates, LRC, ReplayGain, Smart Queue/Flow, corbes
 de fundit, cues múltiples, tags, Artist NFO, cache offline, auth Subsonic, M3U/PLS, sync diferencial,
 AutoEQ, backup, waveform/smart-fades, marcatge de reproducció, sleep timer, capítols, camps Now Playing,
@@ -52,7 +52,7 @@ sync de servidor amb preservació d'estat, model d'equalitzador): `./gradlew :ap
 | Estat d'usuari: favorits, ratings, **play counts**, **resume points** | §10, §20 | ✅ |
 | **Marcatge de reproducció** (llindars played/skip/resume + rollback audiollibre, connectat al listener) | §11, §20 | ✅ + tests |
 | **Android Auto**: `MediaLibraryService` + arbre de navegació (Inicio/Recientes/Biblioteca/Favoritos) + cerca per veu | §38 | ✅ |
-| **API broadcast** (Tasker): MEDIA_COMMAND, MEDIA_SYNC, CUSTOM_ACTION | §42 | ✅ (subconjunt) |
+| **API broadcast** (Tasker): parser tipat de totes les accions + dispatch (control, sync, mescles, force_provider_connection) | §42 | ✅ + tests |
 | Temes Material 3 + **Material You** + modes Clar/Fosc/Negre | §25 | ✅ |
 | **Temes personalitzats JSON** (import/export, compat. Material Theme Builder, parser hex) | §25 | ✅ + tests |
 | Ajustos persistits (DataStore) amb toggles reals + arbre representatiu | §44 | ✅ |
