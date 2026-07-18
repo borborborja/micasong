@@ -78,6 +78,8 @@ fun NowPlayingScreen(
     val isFavorite by viewModel.currentFavorite.collectAsStateWithLifecycle()
     val sleepRemaining by viewModel.sleepRemainingMs.collectAsStateWithLifecycle()
     val queue by viewModel.queue.collectAsStateWithLifecycle()
+    val smartFlow by viewModel.smartFlowMode.collectAsStateWithLifecycle()
+    val smartQueue by viewModel.smartQueueMode.collectAsStateWithLifecycle()
 
     var scrubbing by remember { mutableFloatStateOf(-1f) }
     var sleepMenuOpen by remember { mutableStateOf(false) }
@@ -233,6 +235,10 @@ fun NowPlayingScreen(
     if (showQueue) {
         QueueSheet(
             queue = queue,
+            smartFlow = smartFlow,
+            smartQueue = smartQueue,
+            onSetSmartFlow = viewModel::setSmartFlowMode,
+            onSetSmartQueue = viewModel::setSmartQueueMode,
             onDismiss = { showQueue = false },
             onJump = viewModel::jumpToQueueItem,
             onRemove = viewModel::removeQueueItem,
@@ -244,6 +250,10 @@ fun NowPlayingScreen(
 @Composable
 private fun QueueSheet(
     queue: List<com.micasong.player.playback.QueueItem>,
+    smartFlow: com.micasong.player.data.smart.SmartFlowMode?,
+    smartQueue: com.micasong.player.data.smart.SmartQueueMode?,
+    onSetSmartFlow: (com.micasong.player.data.smart.SmartFlowMode?) -> Unit,
+    onSetSmartQueue: (com.micasong.player.data.smart.SmartQueueMode?) -> Unit,
     onDismiss: () -> Unit,
     onJump: (Int) -> Unit,
     onRemove: (Int) -> Unit,
@@ -255,6 +265,7 @@ private fun QueueSheet(
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
         )
+        SmartFlowControls(smartFlow, smartQueue, onSetSmartFlow, onSetSmartQueue)
         LazyColumn(Modifier.fillMaxWidth()) {
             items(queue, key = { it.mediaId + it.index }) { item ->
                 ListItem(
@@ -315,6 +326,63 @@ private fun RatingBar(rating: Int, onRate: (Int) -> Unit) {
             )
         }
     }
+}
+
+@Composable
+private fun SmartFlowControls(
+    smartFlow: com.micasong.player.data.smart.SmartFlowMode?,
+    smartQueue: com.micasong.player.data.smart.SmartQueueMode?,
+    onSetSmartFlow: (com.micasong.player.data.smart.SmartFlowMode?) -> Unit,
+    onSetSmartQueue: (com.micasong.player.data.smart.SmartQueueMode?) -> Unit,
+) {
+    Column(Modifier.padding(horizontal = 16.dp)) {
+        Text("Cola inteligente", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(
+            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            FilterChip(selected = smartQueue == null, onClick = { onSetSmartQueue(null) }, label = { Text("Off") })
+            com.micasong.player.data.smart.SmartQueueMode.entries.forEach { mode ->
+                FilterChip(
+                    selected = smartQueue == mode,
+                    onClick = { onSetSmartQueue(mode) },
+                    label = { Text(smartQueueLabel(mode)) },
+                )
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        Text("Flujo inteligente", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(
+            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            FilterChip(selected = smartFlow == null, onClick = { onSetSmartFlow(null) }, label = { Text("Off") })
+            com.micasong.player.data.smart.SmartFlowMode.entries.forEach { mode ->
+                FilterChip(
+                    selected = smartFlow == mode,
+                    onClick = { onSetSmartFlow(mode) },
+                    label = { Text(smartFlowLabel(mode)) },
+                )
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+    }
+}
+
+private fun smartQueueLabel(m: com.micasong.player.data.smart.SmartQueueMode): String = when (m) {
+    com.micasong.player.data.smart.SmartQueueMode.GENRE -> "Género"
+    com.micasong.player.data.smart.SmartQueueMode.ARTIST -> "Artista"
+    com.micasong.player.data.smart.SmartQueueMode.RANDOM -> "Aleatorio"
+}
+
+private fun smartFlowLabel(m: com.micasong.player.data.smart.SmartFlowMode): String = when (m) {
+    com.micasong.player.data.smart.SmartFlowMode.SHUFFLE_SPECIALIST -> "Mezcla"
+    com.micasong.player.data.smart.SmartFlowMode.TRANSITION_MAESTRO -> "Transiciones"
+    com.micasong.player.data.smart.SmartFlowMode.DOUBLE_SHOT -> "Doble artista"
+    com.micasong.player.data.smart.SmartFlowMode.ARTIST_FAN -> "Solo artista"
+    com.micasong.player.data.smart.SmartFlowMode.ECHO_MATCH -> "Eco"
+    com.micasong.player.data.smart.SmartFlowMode.ERA_ENTHUSIAST -> "Época"
+    com.micasong.player.data.smart.SmartFlowMode.STEADY_VIBES -> "Ritmo"
 }
 
 private val SPEEDS = listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f)

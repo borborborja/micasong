@@ -66,6 +66,12 @@ class PlayerViewModel @Inject constructor(
     fun jumpToQueueItem(index: Int) = playback.jumpTo(index)
     fun removeQueueItem(index: Int) = playback.removeQueueItem(index)
 
+    // ---- Smart Queue / Smart Flow (spec §16) ----
+    val smartFlowMode = playback.smartFlowMode
+    val smartQueueMode = playback.smartQueueMode
+    fun setSmartFlowMode(mode: com.micasong.player.data.smart.SmartFlowMode?) = playback.setSmartFlowMode(mode)
+    fun setSmartQueueMode(mode: com.micasong.player.data.smart.SmartQueueMode?) = playback.setSmartQueueMode(mode)
+
     fun togglePlayPause() = playback.togglePlayPause()
     fun next() = playback.next()
     fun previous() = playback.previous()

@@ -6,6 +6,9 @@ import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import com.google.common.util.concurrent.MoreExecutors
 import com.micasong.player.data.model.Track
+import com.micasong.player.data.repository.MediaRepository
+import com.micasong.player.data.smart.SmartFlowMode
+import com.micasong.player.data.smart.SmartQueueMode
 import com.micasong.player.data.smart.WeightedShuffle
 import com.micasong.player.widget.NowPlayingWidget
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -59,6 +62,7 @@ data class QueueItem(
 @Singleton
 class PlaybackConnection @Inject constructor(
     @param:ApplicationContext private val context: Context,
+    private val repository: MediaRepository,
 ) {
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var controller: MediaController? = null
@@ -75,6 +79,15 @@ class PlaybackConnection @Inject constructor(
     private val _queue = MutableStateFlow<List<QueueItem>>(emptyList())
     val queue: StateFlow<List<QueueItem>> = _queue.asStateFlow()
 
+    /** Smart Flow mode (spec §16): inserts a similar track after the current one on each change. */
+    private val _smartFlowMode = MutableStateFlow<SmartFlowMode?>(null)
+    val smartFlowMode: StateFlow<SmartFlowMode?> = _smartFlowMode.asStateFlow()
+
+    /** Smart Queue mode (spec §16): keeps appending matching tracks so the queue never runs dry. */
+    private val _smartQueueMode = MutableStateFlow<SmartQueueMode?>(null)
+    val smartQueueMode: StateFlow<SmartQueueMode?> = _smartQueueMode.asStateFlow()
+    private var extending = false
+
     init {
         val future = MediaController.Builder(context, playbackSessionToken(context)).buildAsync()
         future.addListener({
@@ -88,12 +101,57 @@ class PlaybackConnection @Inject constructor(
 
     private val playerListener = object : Player.Listener {
         override fun onEvents(player: Player, events: Player.Events) = pushState()
+
+        override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+            applySmartFlow(mediaItem)
+        }
+    }
+
+    /** Smart Flow (spec §16): insert similar tracks right after the current one on each change. */
+    private fun applySmartFlow(current: MediaItem?) {
+        val mode = _smartFlowMode.value ?: return
+        val id = current?.mediaId?.removePrefix("track/")?.toLongOrNull() ?: return
+        scope.launch {
+            val track = repository.trackById(id) ?: return@launch
+            val inserts = repository.smartFlowInsertions(track, mode)
+            val c = controller ?: return@launch
+            if (inserts.isNotEmpty()) {
+                val at = (c.currentMediaItemIndex + 1).coerceAtMost(c.mediaItemCount)
+                c.addMediaItems(at, inserts.map { it.toMediaItem() })
+            }
+        }
+    }
+
+    /** Smart Queue (spec §16): when the queue is nearly exhausted, append a fresh matching batch. */
+    private fun maybeExtendSmartQueue() {
+        val mode = _smartQueueMode.value ?: return
+        val c = controller ?: return
+        if (extending) return
+        val remaining = c.mediaItemCount - c.currentMediaItemIndex - 1
+        if (remaining > 2) return
+        val seedId = c.currentMediaItem?.mediaId?.removePrefix("track/")?.toLongOrNull() ?: return
+        extending = true
+        scope.launch {
+            try {
+                val seed = repository.trackById(seedId) ?: return@launch
+                val more = repository.smartQueueExtension(listOf(seed), mode, count = 10)
+                if (more.isNotEmpty()) controller?.addMediaItems(more.map { it.toMediaItem() })
+            } finally {
+                extending = false
+            }
+        }
+    }
+
+    fun setSmartFlowMode(mode: SmartFlowMode?) { _smartFlowMode.value = mode }
+    fun setSmartQueueMode(mode: SmartQueueMode?) {
+        _smartQueueMode.value = mode
+        if (mode != null) maybeExtendSmartQueue()
     }
 
     private fun startPositionUpdates() {
         scope.launch {
             while (true) {
-                if (controller?.isPlaying == true) pushState()
+                if (controller?.isPlaying == true) { pushState(); maybeExtendSmartQueue() }
                 delay(500)
             }
         }
