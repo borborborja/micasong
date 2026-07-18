@@ -42,7 +42,10 @@ class PlaybackStatsListener(
 
     private fun registerPlay(mediaId: String) {
         val id = mediaId.trackId() ?: return
-        scope.launch { repository.registerPlay(id, System.currentTimeMillis()) }
+        scope.launch {
+            repository.registerPlay(id, System.currentTimeMillis())
+            repository.scrobble(id) // report the completed play to the server (spec §9)
+        }
     }
 
     private fun saveResumePosition() {

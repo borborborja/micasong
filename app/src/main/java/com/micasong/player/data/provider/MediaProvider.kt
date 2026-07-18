@@ -87,4 +87,7 @@ interface MediaProvider {
      * has none (spec §41). Default: unsupported.
      */
     suspend fun lyrics(track: TrackEntity): String? = null
+
+    /** Report a completed play to the backend (scrobble, spec §9/§47). Default: no-op. */
+    suspend fun scrobble(track: TrackEntity) = Unit
 }

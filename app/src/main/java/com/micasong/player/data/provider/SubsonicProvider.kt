@@ -142,6 +142,14 @@ class SubsonicProvider(
         SubsonicMappers.parseLyrics(json)
     }
 
+    /** Submit a scrobble for a completed play (spec §47 scrobble.view). */
+    override suspend fun scrobble(track: TrackEntity) {
+        withContext(Dispatchers.IO) {
+            val serverId = android.net.Uri.parse(track.mediaUri).getQueryParameter("id") ?: return@withContext
+            getJson(endpoint("scrobble", mapOf("id" to serverId, "submission" to "true")))
+        }
+    }
+
     fun coverArtUri(coverArtId: String?): String? =
         coverArtId?.takeIf { it.isNotBlank() }?.let { endpoint("getCoverArt", mapOf("id" to it, "size" to "512")) }
 

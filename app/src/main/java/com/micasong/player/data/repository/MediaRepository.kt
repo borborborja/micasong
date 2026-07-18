@@ -298,6 +298,14 @@ class MediaRepository @Inject constructor(
     suspend fun toggleAlbumFavorite(album: Album) = musicDao.setAlbumFavorite(album.id, !album.isFavorite)
     suspend fun setTrackRating(id: Long, rating: Int) = musicDao.setTrackRating(id, rating)
     suspend fun registerPlay(id: Long, ts: Long) = musicDao.registerPlay(id, ts)
+
+    /** Report a completed play to the track's server backend (scrobble, spec §9). */
+    suspend fun scrobble(id: Long) {
+        val track = musicDao.trackById(id) ?: return
+        if (track.providerId == LOCAL_PROVIDER_ID) return
+        val provider = buildProviders().firstOrNull { it.config.id == track.providerId } ?: return
+        runCatching { provider.scrobble(track) }
+    }
     suspend fun setResumePosition(id: Long, pos: Long) = musicDao.setResumePosition(id, pos)
 
     suspend fun trackById(id: Long): Track? = musicDao.trackById(id)?.toDomain()
