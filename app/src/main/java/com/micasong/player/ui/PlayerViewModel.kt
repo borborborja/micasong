@@ -54,6 +54,12 @@ class PlayerViewModel @Inject constructor(
         viewModelScope.launch { repository.setTrackRating(id, rating.coerceIn(0, 10)) }
     }
 
+    /** Remaining sleep-timer milliseconds (null = off), for the Now Playing countdown (spec §12). */
+    val sleepRemainingMs: StateFlow<Long?> = playback.sleepRemainingMs
+
+    fun setSleepTimer(minutes: Int) = playback.setSleepTimer(minutes)
+    fun cancelSleepTimer() = playback.cancelSleepTimer()
+
     fun togglePlayPause() = playback.togglePlayPause()
     fun next() = playback.next()
     fun previous() = playback.previous()

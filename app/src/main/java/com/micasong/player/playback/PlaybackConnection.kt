@@ -11,11 +11,13 @@ import com.micasong.player.widget.NowPlayingWidget
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -53,6 +55,11 @@ class PlaybackConnection @Inject constructor(
 
     private val _state = MutableStateFlow(NowPlayingState())
     val state: StateFlow<NowPlayingState> = _state.asStateFlow()
+
+    /** Remaining sleep-timer milliseconds, or null when no timer is armed (spec §12). */
+    private val _sleepRemainingMs = MutableStateFlow<Long?>(null)
+    val sleepRemainingMs: StateFlow<Long?> = _sleepRemainingMs.asStateFlow()
+    private var sleepJob: Job? = null
 
     init {
         val future = MediaController.Builder(context, playbackSessionToken(context)).buildAsync()
@@ -142,6 +149,31 @@ class PlaybackConnection @Inject constructor(
     fun seekTo(positionMs: Long) { controller?.seekTo(positionMs) }
     fun toggleShuffle() { controller?.let { it.shuffleModeEnabled = !it.shuffleModeEnabled } }
     fun setSpeed(speed: Float) { controller?.setPlaybackSpeed(speed.coerceIn(0.25f, 3f)) }
+
+    /** Arm a sleep timer for [minutes]; playback pauses when it elapses (spec §12). */
+    fun setSleepTimer(minutes: Int) {
+        sleepJob?.cancel()
+        if (minutes <= 0) { _sleepRemainingMs.value = null; return }
+        sleepJob = scope.launch {
+            var remaining = minutes * 60_000L
+            _sleepRemainingMs.value = remaining
+            while (isActive && remaining > 0) {
+                delay(1_000)
+                remaining -= 1_000
+                _sleepRemainingMs.value = remaining.coerceAtLeast(0)
+            }
+            if (isActive) {
+                controller?.pause()
+                _sleepRemainingMs.value = null
+            }
+        }
+    }
+
+    fun cancelSleepTimer() {
+        sleepJob?.cancel()
+        sleepJob = null
+        _sleepRemainingMs.value = null
+    }
 
     fun cycleRepeat() {
         val c = controller ?: return

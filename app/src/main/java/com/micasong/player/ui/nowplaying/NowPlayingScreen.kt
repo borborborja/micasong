@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -28,6 +29,8 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.filled.StarHalf
 import androidx.compose.foundation.clickable
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -38,6 +41,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -62,8 +66,10 @@ fun NowPlayingScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val rating by viewModel.currentRating.collectAsStateWithLifecycle()
     val isFavorite by viewModel.currentFavorite.collectAsStateWithLifecycle()
+    val sleepRemaining by viewModel.sleepRemainingMs.collectAsStateWithLifecycle()
 
     var scrubbing by remember { mutableFloatStateOf(-1f) }
+    var sleepMenuOpen by remember { mutableStateOf(false) }
 
     Column(
         Modifier
@@ -81,6 +87,29 @@ fun NowPlayingScreen(
                 modifier = Modifier.weight(1f),
                 textAlign = TextAlign.Center,
             )
+            Box {
+                IconButton(onClick = { sleepMenuOpen = true }) {
+                    Icon(
+                        Icons.Filled.Bedtime,
+                        contentDescription = "Temporizador para dormir",
+                        tint = if (sleepRemaining != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                DropdownMenu(expanded = sleepMenuOpen, onDismissRequest = { sleepMenuOpen = false }) {
+                    listOf(15, 30, 45, 60).forEach { minutes ->
+                        DropdownMenuItem(
+                            text = { Text("$minutes min") },
+                            onClick = { viewModel.setSleepTimer(minutes); sleepMenuOpen = false },
+                        )
+                    }
+                    if (sleepRemaining != null) {
+                        DropdownMenuItem(
+                            text = { Text("Desactivar") },
+                            onClick = { viewModel.cancelSleepTimer(); sleepMenuOpen = false },
+                        )
+                    }
+                }
+            }
             IconButton(onClick = viewModel::toggleFavoriteCurrent) {
                 Icon(
                     if (isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
@@ -88,6 +117,15 @@ fun NowPlayingScreen(
                     tint = if (isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+        }
+
+        sleepRemaining?.let { remaining ->
+            Text(
+                "Se pausará en ${formatDuration(remaining)}",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(top = 4.dp),
+            )
         }
 
         Spacer(Modifier.height(24.dp))
