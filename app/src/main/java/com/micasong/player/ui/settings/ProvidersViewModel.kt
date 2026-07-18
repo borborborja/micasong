@@ -78,6 +78,18 @@ class ProvidersViewModel @Inject constructor(
                     )
                 }
             }
+            ProviderType.EMBY -> {
+                val session = com.micasong.player.data.provider.EmbyProvider.authenticate(url, username.trim(), secret)
+                if (session == null) {
+                    _error.value = "No se pudo iniciar sesión en Emby. Revisa la URL, el usuario y la contraseña."
+                    null
+                } else {
+                    ProviderConfig(
+                        id = 0, type = type, displayName = displayName, primaryUrl = url,
+                        username = session.userId, secret = session.token,
+                    )
+                }
+            }
             else -> ProviderConfig(
                 id = 0, type = type, displayName = displayName, primaryUrl = url,
                 username = username.trim().ifBlank { null }, secret = secret.ifBlank { null },

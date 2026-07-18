@@ -77,6 +77,7 @@ class MediaRepository @Inject constructor(
             val config = entity.toConfig()
             when (config.type) {
                 ProviderType.JELLYFIN -> JellyfinProvider(config)
+                ProviderType.EMBY -> com.micasong.player.data.provider.EmbyProvider(config)
                 else -> SubsonicProvider(config)   // Subsonic/OpenSubsonic/Navidrome
             }
         }
