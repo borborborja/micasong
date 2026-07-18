@@ -4,6 +4,7 @@ import com.micasong.player.data.model.Track
 import kotlin.random.Random
 
 /** Smart Queue modes (spec §16): extend the queue at the end, potentially indefinitely. */
+@kotlinx.serialization.Serializable
 enum class SmartQueueMode { GENRE, ARTIST, RANDOM }
 
 /**
