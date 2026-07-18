@@ -32,6 +32,10 @@ class LibraryViewModel @Inject constructor(
         if (list.isNotEmpty()) playback.playTracks(list, startIndex)
     }
 
+    // ---- Queue actions (spec §13) ----
+    fun playTrackNext(track: Track) = playback.playNext(listOf(track))
+    fun addTrackToQueue(track: Track) = playback.addToQueue(listOf(track))
+
     // ---- Playlist management (spec §32) ----
     fun createPlaylist(name: String) {
         if (name.isNotBlank()) viewModelScope.launch { repository.createPlaylist(name.trim()) }

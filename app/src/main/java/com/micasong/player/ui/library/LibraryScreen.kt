@@ -25,6 +25,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.PlaylistPlay
 import androidx.compose.material3.AlertDialog
+import androidx.compose.foundation.layout.Box
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.TextButton
@@ -168,14 +171,31 @@ private fun SongsTab(viewModel: LibraryViewModel, onAddToPlaylist: (Track) -> Un
     val tracks by viewModel.tracks.collectAsStateWithLifecycle()
     LazyColumn(contentPadding = PaddingValues(vertical = 8.dp)) {
         itemsIndexed(tracks, key = { _, t -> t.id }) { index, track ->
-            TrackRow(
-                title = track.title,
-                subtitle = track.artistName,
-                artworkUri = track.artworkUri,
-                durationLabel = formatDuration(track.durationMs),
-                onClick = { viewModel.playAllTracks(index) },
-                onOverflow = { onAddToPlaylist(track) },
-            )
+            var menuOpen by remember { mutableStateOf(false) }
+            Box {
+                TrackRow(
+                    title = track.title,
+                    subtitle = track.artistName,
+                    artworkUri = track.artworkUri,
+                    durationLabel = formatDuration(track.durationMs),
+                    onClick = { viewModel.playAllTracks(index) },
+                    onOverflow = { menuOpen = true },
+                )
+                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    DropdownMenuItem(
+                        text = { Text("Reproducir a continuación") },
+                        onClick = { viewModel.playTrackNext(track); menuOpen = false },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Añadir a la cola") },
+                        onClick = { viewModel.addTrackToQueue(track); menuOpen = false },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Añadir a lista") },
+                        onClick = { onAddToPlaylist(track); menuOpen = false },
+                    )
+                }
+            }
         }
     }
 }
