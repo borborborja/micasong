@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
+import kotlinx.serialization.decodeFromString
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -36,6 +37,30 @@ class PlayerViewModel @Inject constructor(
         .map { it.mediaId?.removePrefix("track/")?.toLongOrNull() }
         .distinctUntilChanged()
         .mapLatest { id -> if (id == null) null else repository.lyricsFor(id) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** Chapters of the current audiobook/podcast track (spec §19), empty when none. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val currentChapters: StateFlow<com.micasong.player.data.audio.ChapterInfo> = state
+        .map { it.mediaId?.removePrefix("track/")?.toLongOrNull() }
+        .distinctUntilChanged()
+        .mapLatest { id ->
+            val t = if (id == null) null else repository.trackById(id)
+            com.micasong.player.data.audio.Chapters.fromJson(t?.chaptersJson, t?.durationMs ?: 0L)
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), com.micasong.player.data.audio.ChapterInfo(emptyList()))
+
+    /** Downsampled amplitude envelope of the current track for the waveform seekbar (spec §13), or null. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val currentWaveform: StateFlow<FloatArray?> = state
+        .map { it.mediaId?.removePrefix("track/")?.toLongOrNull() }
+        .distinctUntilChanged()
+        .mapLatest { id ->
+            val t = if (id == null) null else repository.trackById(id)
+            t?.waveformJson?.let { json ->
+                runCatching { kotlinx.serialization.json.Json.decodeFromString<List<Float>>(json).toFloatArray() }.getOrNull()
+            }
+        }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     /** 0–10 rating of the track currently playing, reacting to DB changes (spec §11). */

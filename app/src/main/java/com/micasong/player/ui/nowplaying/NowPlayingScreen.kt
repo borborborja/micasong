@@ -1,7 +1,10 @@
 package com.micasong.player.ui.nowplaying
 
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -88,6 +91,8 @@ fun NowPlayingScreen(
     val smartQueue by viewModel.smartQueueMode.collectAsStateWithLifecycle()
 
     val lyrics by viewModel.currentLyrics.collectAsStateWithLifecycle()
+    val chapters by viewModel.currentChapters.collectAsStateWithLifecycle()
+    val waveform by viewModel.currentWaveform.collectAsStateWithLifecycle()
 
     var scrubbing by remember { mutableFloatStateOf(-1f) }
     var sleepMenuOpen by remember { mutableStateOf(false) }
@@ -182,19 +187,37 @@ fun NowPlayingScreen(
             overflow = TextOverflow.Ellipsis,
         )
 
+        if (!chapters.isEmpty) {
+            Spacer(Modifier.height(12.dp))
+            ChapterNavigator(
+                chapters = chapters,
+                positionMs = state.positionMs,
+                onSeek = viewModel::seekTo,
+            )
+        }
+
         Spacer(Modifier.height(24.dp))
         val fraction = if (scrubbing >= 0f) scrubbing
         else if (state.durationMs > 0) (state.positionMs.toFloat() / state.durationMs).coerceIn(0f, 1f)
         else 0f
 
-        Slider(
-            value = fraction,
-            onValueChange = { scrubbing = it },
-            onValueChangeFinished = {
-                if (state.durationMs > 0) viewModel.seekTo((scrubbing * state.durationMs).toLong())
-                scrubbing = -1f
-            },
-        )
+        val wf = waveform
+        if (wf != null && wf.isNotEmpty()) {
+            WaveformSeekbar(
+                envelope = wf,
+                progress = fraction,
+                onSeek = { f -> if (state.durationMs > 0) viewModel.seekTo((f * state.durationMs).toLong()) },
+            )
+        } else {
+            Slider(
+                value = fraction,
+                onValueChange = { scrubbing = it },
+                onValueChangeFinished = {
+                    if (state.durationMs > 0) viewModel.seekTo((scrubbing * state.durationMs).toLong())
+                    scrubbing = -1f
+                },
+            )
+        }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(formatDuration(state.positionMs), style = MaterialTheme.typography.labelMedium)
             Text(formatDuration(state.durationMs), style = MaterialTheme.typography.labelMedium)
@@ -339,6 +362,62 @@ private fun RatingBar(rating: Int, onRate: (Int) -> Unit) {
                 modifier = Modifier
                     .size(36.dp)
                     .clickable { onRate(if (rating == value) 0 else value) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun ChapterNavigator(
+    chapters: com.micasong.player.data.audio.ChapterInfo,
+    positionMs: Long,
+    onSeek: (Long) -> Unit,
+) {
+    val current = chapters.chapterAt(positionMs) ?: return
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+        IconButton(onClick = {
+            // Previous chapter (or restart the current if we're past its start).
+            val target = if (positionMs - current.startMs > 3000) current else chapters.chapters.getOrNull(current.index - 1) ?: current
+            onSeek(target.startMs)
+        }) { Icon(Icons.Filled.SkipPrevious, contentDescription = "Capítulo anterior") }
+        Text(
+            "Cap. ${current.index + 1}/${chapters.count} · ${current.title}",
+            style = MaterialTheme.typography.labelMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+            textAlign = TextAlign.Center,
+        )
+        IconButton(onClick = {
+            chapters.chapters.getOrNull(current.index + 1)?.let { onSeek(it.startMs) }
+        }) { Icon(Icons.Filled.SkipNext, contentDescription = "Capítulo siguiente") }
+    }
+}
+
+@Composable
+private fun WaveformSeekbar(envelope: FloatArray, progress: Float, onSeek: (Float) -> Unit) {
+    val primary = MaterialTheme.colorScheme.primary
+    val track = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)
+    Canvas(
+        Modifier
+            .fillMaxWidth()
+            .height(48.dp)
+            .pointerInput(Unit) {
+                detectTapGestures { offset -> onSeek((offset.x / size.width).coerceIn(0f, 1f)) }
+            },
+    ) {
+        val n = envelope.size
+        if (n == 0) return@Canvas
+        val barWidth = size.width / n
+        val playedX = size.width * progress.coerceIn(0f, 1f)
+        for (i in 0 until n) {
+            val amp = envelope[i].coerceIn(0f, 1f)
+            val h = (amp * size.height).coerceAtLeast(2f)
+            val x = i * barWidth
+            drawRect(
+                color = if (x <= playedX) primary else track,
+                topLeft = androidx.compose.ui.geometry.Offset(x, (size.height - h) / 2f),
+                size = androidx.compose.ui.geometry.Size(barWidth * 0.7f, h),
             )
         }
     }

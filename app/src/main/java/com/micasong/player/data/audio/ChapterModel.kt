@@ -1,5 +1,10 @@
 package com.micasong.player.data.audio
 
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+
 /** A single audiobook/podcast chapter (spec §19, ID3v2 chapters). */
 data class Chapter(val index: Int, val title: String, val startMs: Long, val endMs: Long) {
     val durationMs: Long get() = (endMs - startMs).coerceAtLeast(0)
@@ -36,7 +41,22 @@ data class ChapterNavState(
     val totalDurationMs: Long,
 )
 
+/** Persisted chapter marker (title + start), stored as `chaptersJson` on a track (spec §19). */
+@Serializable
+data class ChapterMarker(val title: String, val startMs: Long)
+
 object Chapters {
+
+    private val json = Json { ignoreUnknownKeys = true }
+
+    /** Parse a track's `chaptersJson` (array of [ChapterMarker]) into a [ChapterInfo]. */
+    fun fromJson(text: String?, totalDurationMs: Long): ChapterInfo {
+        if (text.isNullOrBlank()) return ChapterInfo(emptyList())
+        val markers = runCatching { json.decodeFromString<List<ChapterMarker>>(text) }.getOrNull() ?: return ChapterInfo(emptyList())
+        return fromMarkers(markers.map { it.title to it.startMs }, totalDurationMs)
+    }
+
+    fun toJson(markers: List<ChapterMarker>): String = json.encodeToString(markers)
 
     /** Build contiguous chapters from `(title, startMs)` markers and the track's total duration. */
     fun fromMarkers(markers: List<Pair<String, Long>>, totalDurationMs: Long): ChapterInfo {
