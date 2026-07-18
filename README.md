@@ -16,7 +16,7 @@ la bíblia (§1).
 ## Estat actual
 
 L'app **compila** (`assembleDebug`), **passa lint** sense errors (incloent-hi la validació
-d'apps de mitjans d'Android Auto) i té una **suite de 257 tests unitaris** que verifica ~38 motors de lògica pura (smart filters,
+d'apps de mitjans d'Android Auto) i té una **suite de 265 tests unitaris** que verifica ~39 motors de lògica pura (smart filters,
 smart playlists, mescles personals, string templates, LRC, ReplayGain, Smart Queue/Flow, corbes
 de fundit, cues múltiples, tags, Artist NFO, cache offline, auth Subsonic, M3U/PLS, sync diferencial,
 AutoEQ, backup, waveform/smart-fades, marcatge de reproducció, sleep timer, capítols, camps Now Playing,
@@ -98,7 +98,7 @@ sync de servidor amb preservació d'estat, model d'equalitzador): `./gradlew :ap
 - **Fase 2** ✅ — Subsonic/OpenSubsonic + Jellyfin, onboarding de servidors, sync diferencial amb preservació d'estat, image cache, cerca. *(Pendents: proveïdors Plex/Emby/Kodi/SMB/WebDAV/núvol.)*
 - **Fase 4** ✅ (nucli) — equalitzador complet (model+UI+persistència+aplicació), AutoEQ, ReplayGain, corbes de fundit/smart fades, cues múltiples, Smart Queue/Flow, LRC, sleep timer, capítols, transcode-decision. *(Pendents amb deps pesades: PEQ/256 bandes, aplicació real de crossfade, transcode FFmpeg, ReplayGain per-pista via TagLib, lletres a la UI.)*
 - **Fase 5** ✅ (nucli) — Android Auto, API broadcast completa, widget de pantalla d'inici, backup/restore xifrat, config Wear OS, temes/estils/profiles import-export, model de renderers. *(Pendents amb deps/mòduls dedicats: integració real de Cast (CastContext al flavor full + lib UPnP), app companion Wear OS, UI de backup + empaquetat del fitxer de BD.)*
-- **Fase 6** — Motor audiòfil Hi-Res/bit-perfect, DSD, pipeline DSP 64-bit (§11-bis) — *requereix maquinari real (DACs/DAPs); opcional segons la bíblia*.
+- **Fase 6** 🟡 — nucli testejable fet: **negociador de format de sortida** (`OutputNegotiator`) que decideix bit-perfect / resample / DSD natiu / DoP / upsample segons origen i capacitats del DAC (§11-bis, +8 tests). *Pendent i no verificable sense maquinari (DACs/DAPs): routing USB/UAC2 real, decodificador DSD, pipeline DSP 64-bit, SDK HiBy. Opcional segons la bíblia.*
 
 ---
 
