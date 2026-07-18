@@ -57,6 +57,7 @@ class MediaRepository @Inject constructor(
     private val playlistDao: PlaylistDao,
     private val providerDao: ProviderDao,
     private val downloadDao: DownloadDao,
+    private val downloadTrigger: com.micasong.player.data.cache.DownloadTrigger,
 ) {
     // The local device provider is always present; server providers (Subsonic/Jellyfin/…) are
     // loaded from the database so they survive restarts (spec §4).
@@ -237,12 +238,14 @@ class MediaRepository @Inject constructor(
     /** All download/cache rows, for the offline-files UI. */
     val downloads: Flow<List<DownloadEntity>> = downloadDao.all()
 
-    /** Queue tracks for offline download (skipping ones already queued/downloaded). */
+    /** Queue tracks for offline download (skipping local-only tracks and ones already queued). */
     suspend fun enqueueDownloads(trackIds: List<Long>, tier: CacheTier = CacheTier.ROLLING, auto: Boolean = false) {
         var stamp = System.currentTimeMillis()
+        var queued = 0
         for (id in trackIds) {
             if (downloadDao.byTrack(id) != null) continue
             val providerId = musicDao.trackById(id)?.providerId ?: continue
+            if (providerId == LOCAL_PROVIDER_ID) continue // local files are already offline
             downloadDao.upsert(
                 DownloadEntity(
                     trackId = id,
@@ -253,7 +256,9 @@ class MediaRepository @Inject constructor(
                     auto = auto,
                 )
             )
+            queued++
         }
+        if (queued > 0) downloadTrigger.trigger()
     }
 
     suspend fun removeDownload(trackId: Long) {

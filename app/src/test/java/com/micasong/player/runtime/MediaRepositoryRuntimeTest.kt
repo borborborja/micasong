@@ -35,7 +35,7 @@ class MediaRepositoryRuntimeTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
         db = Room.inMemoryDatabaseBuilder(context, MiCaSongDatabase::class.java)
             .allowMainThreadQueries().build()
-        repository = MediaRepository(context, db.musicDao(), db.playlistDao(), db.providerDao(), db.downloadDao())
+        repository = MediaRepository(context, db.musicDao(), db.playlistDao(), db.providerDao(), db.downloadDao(), com.micasong.player.data.cache.DownloadTrigger {})
     }
 
     @After

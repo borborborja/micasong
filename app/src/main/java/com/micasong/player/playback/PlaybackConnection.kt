@@ -1,6 +1,7 @@
 package com.micasong.player.playback
 
 import android.content.Context
+import android.net.Uri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
@@ -20,8 +21,12 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import com.micasong.player.data.cache.DownloadState
+import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -88,6 +93,9 @@ class PlaybackConnection @Inject constructor(
     val smartQueueMode: StateFlow<SmartQueueMode?> = _smartQueueMode.asStateFlow()
     private var extending = false
 
+    /** trackId → local file path for completed downloads, so playback prefers the offline copy. */
+    @Volatile private var localPaths: Map<Long, String> = emptyMap()
+
     init {
         val future = MediaController.Builder(context, playbackSessionToken(context)).buildAsync()
         future.addListener({
@@ -97,7 +105,24 @@ class PlaybackConnection @Inject constructor(
             }
             startPositionUpdates()
         }, MoreExecutors.directExecutor())
+
+        // Keep the offline-file index fresh so tracks play from disk when downloaded (spec §35).
+        repository.downloads
+            .onEach { rows ->
+                localPaths = rows
+                    .filter { it.state == DownloadState.COMPLETED.ordinal && it.localPath != null }
+                    .associate { it.trackId to it.localPath!! }
+            }
+            .launchIn(scope)
     }
+
+    /** Build a MediaItem, substituting the local downloaded file when one exists (spec §35). */
+    private fun Track.toPlayableItem(): MediaItem {
+        val local = localPaths[id] ?: return toMediaItem()
+        return toMediaItem().buildUpon().setUri(Uri.fromFile(File(local))).build()
+    }
+
+    private fun List<Track>.toPlayableItems(): List<MediaItem> = map { it.toPlayableItem() }
 
     private val playerListener = object : Player.Listener {
         override fun onEvents(player: Player, events: Player.Events) = pushState()
@@ -117,7 +142,7 @@ class PlaybackConnection @Inject constructor(
             val c = controller ?: return@launch
             if (inserts.isNotEmpty()) {
                 val at = (c.currentMediaItemIndex + 1).coerceAtMost(c.mediaItemCount)
-                c.addMediaItems(at, inserts.map { it.toMediaItem() })
+                c.addMediaItems(at, inserts.toPlayableItems())
             }
         }
     }
@@ -135,7 +160,7 @@ class PlaybackConnection @Inject constructor(
             try {
                 val seed = repository.trackById(seedId) ?: return@launch
                 val more = repository.smartQueueExtension(listOf(seed), mode, count = 10)
-                if (more.isNotEmpty()) controller?.addMediaItems(more.map { it.toMediaItem() })
+                if (more.isNotEmpty()) controller?.addMediaItems(more.toPlayableItems())
             } finally {
                 extending = false
             }
@@ -207,7 +232,7 @@ class PlaybackConnection @Inject constructor(
         val ordered = if (shuffle) WeightedShuffle.shuffleTracks(tracks) else tracks
         val start = if (shuffle) 0 else startIndex.coerceIn(0, tracks.lastIndex)
         c.shuffleModeEnabled = false
-        c.setMediaItems(ordered.map { it.toMediaItem() }, start, 0L)
+        c.setMediaItems(ordered.toPlayableItems(), start, 0L)
         c.prepare()
         c.play()
     }
@@ -216,14 +241,14 @@ class PlaybackConnection @Inject constructor(
 
     fun addToQueue(tracks: List<Track>) {
         val c = controller ?: return
-        c.addMediaItems(tracks.map { it.toMediaItem() })
+        c.addMediaItems(tracks.toPlayableItems())
         if (c.mediaItemCount == tracks.size) { c.prepare(); c.play() }
     }
 
     fun playNext(tracks: List<Track>) {
         val c = controller ?: return
         val index = (c.currentMediaItemIndex + 1).coerceAtMost(c.mediaItemCount)
-        c.addMediaItems(index, tracks.map { it.toMediaItem() })
+        c.addMediaItems(index, tracks.toPlayableItems())
         if (c.mediaItemCount == tracks.size) { c.prepare(); c.play() }
     }
 
