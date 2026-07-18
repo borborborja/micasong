@@ -27,6 +27,7 @@ class PlayerViewModel @Inject constructor(
     fun seekTo(positionMs: Long) = playback.seekTo(positionMs)
     fun toggleShuffle() = playback.toggleShuffle()
     fun cycleRepeat() = playback.cycleRepeat()
+    fun setSpeed(speed: Float) = playback.setSpeed(speed)
 
     fun toggleFavoriteCurrent() {
         val mediaId = state.value.mediaId ?: return

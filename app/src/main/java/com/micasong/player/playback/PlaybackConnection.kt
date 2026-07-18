@@ -36,6 +36,7 @@ data class NowPlayingState(
     val repeatMode: Int = Player.REPEAT_MODE_OFF,
     val queueSize: Int = 0,
     val queueIndex: Int = 0,
+    val speed: Float = 1f,
 )
 
 /**
@@ -96,6 +97,7 @@ class PlaybackConnection @Inject constructor(
             repeatMode = c.repeatMode,
             queueSize = c.mediaItemCount,
             queueIndex = c.currentMediaItemIndex,
+            speed = c.playbackParameters.speed,
         )
         // Keep the home-screen widget (spec §40) in sync with playback.
         NowPlayingWidget.updateAll(context, _state.value)
@@ -139,6 +141,7 @@ class PlaybackConnection @Inject constructor(
     fun previous() = controller?.seekToPrevious().let { }
     fun seekTo(positionMs: Long) { controller?.seekTo(positionMs) }
     fun toggleShuffle() { controller?.let { it.shuffleModeEnabled = !it.shuffleModeEnabled } }
+    fun setSpeed(speed: Float) { controller?.setPlaybackSpeed(speed.coerceIn(0.25f, 3f)) }
 
     fun cycleRepeat() {
         val c = controller ?: return

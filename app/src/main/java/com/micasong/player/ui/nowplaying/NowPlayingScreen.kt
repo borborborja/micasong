@@ -1,5 +1,7 @@
 package com.micasong.player.ui.nowplaying
 
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,6 +25,7 @@ import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -152,6 +155,29 @@ fun NowPlayingScreen(
                     tint = if (state.repeatMode != Player.REPEAT_MODE_OFF) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+        }
+
+        Spacer(Modifier.height(16.dp))
+        SpeedSelector(current = state.speed, onSelect = viewModel::setSpeed)
+    }
+}
+
+private val SPEEDS = listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f)
+
+@Composable
+private fun SpeedSelector(current: Float, onSelect: (Float) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("Velocidad", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        SPEEDS.forEach { speed ->
+            FilterChip(
+                selected = kotlin.math.abs(current - speed) < 0.01f,
+                onClick = { onSelect(speed) },
+                label = { Text(if (speed == 1f) "1×" else "${speed}×".replace(".0×", "×")) },
+            )
         }
     }
 }
