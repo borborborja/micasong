@@ -45,6 +45,10 @@ class LibraryViewModel @Inject constructor(
         viewModelScope.launch { repository.addTracksToPlaylist(playlistId, listOf(trackId)) }
     }
 
+    fun createSmartPlaylist(name: String, def: com.micasong.player.data.smart.SmartPlaylistDefinition) {
+        if (name.isNotBlank()) viewModelScope.launch { repository.createSmartPlaylist(name.trim(), def) }
+    }
+
     fun createPlaylistWithTrack(name: String, trackId: Long) {
         if (name.isBlank()) return
         viewModelScope.launch {

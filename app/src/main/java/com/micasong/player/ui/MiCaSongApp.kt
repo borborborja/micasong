@@ -91,7 +91,11 @@ fun MiCaSongApp() {
                     onOpenArtist = { navController.navigate(Routes.artist(it)) },
                     onOpenGenre = { navController.navigate(Routes.genre(it)) },
                     onOpenPlaylist = { navController.navigate(Routes.playlist(it)) },
+                    onNewSmartPlaylist = { navController.navigate(Routes.SMART_PLAYLIST_NEW) },
                 )
+            }
+            composable(Routes.SMART_PLAYLIST_NEW) {
+                com.micasong.player.ui.library.SmartPlaylistEditorScreen(onBack = { navController.popBackStack() })
             }
             composable(TopLevelDestination.SEARCH.route) {
                 SearchScreen(

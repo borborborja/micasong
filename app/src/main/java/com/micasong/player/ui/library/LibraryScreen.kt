@@ -23,6 +23,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.PlaylistPlay
 import androidx.compose.material3.AlertDialog
 import androidx.compose.foundation.layout.Box
@@ -66,6 +67,7 @@ fun LibraryScreen(
     onOpenArtist: (Long) -> Unit,
     onOpenGenre: (String) -> Unit,
     onOpenPlaylist: (Long) -> Unit,
+    onNewSmartPlaylist: () -> Unit = {},
     viewModel: LibraryViewModel = hiltViewModel(),
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
@@ -88,7 +90,7 @@ fun LibraryScreen(
             1 -> ArtistsTab(viewModel.artists.collectAsStateWithLifecycle().value, onOpenArtist)
             2 -> SongsTab(viewModel, onAddToPlaylist = { addToPlaylistTrack = it })
             3 -> GenresTab(viewModel.genres.collectAsStateWithLifecycle().value, onOpenGenre)
-            4 -> PlaylistsTab(playlists, onOpenPlaylist, onCreate = { showCreate = true })
+            4 -> PlaylistsTab(playlists, onOpenPlaylist, onCreate = { showCreate = true }, onNewSmart = onNewSmartPlaylist)
         }
     }
 
@@ -217,7 +219,12 @@ private fun GenresTab(genres: List<Genre>, onOpenGenre: (String) -> Unit) {
 }
 
 @Composable
-private fun PlaylistsTab(playlists: List<Playlist>, onOpenPlaylist: (Long) -> Unit, onCreate: () -> Unit) {
+private fun PlaylistsTab(
+    playlists: List<Playlist>,
+    onOpenPlaylist: (Long) -> Unit,
+    onCreate: () -> Unit,
+    onNewSmart: () -> Unit,
+) {
     LazyColumn {
         item {
             Row(
@@ -227,6 +234,16 @@ private fun PlaylistsTab(playlists: List<Playlist>, onOpenPlaylist: (Long) -> Un
                 Icon(Icons.Filled.Add, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                 Spacer(Modifier.size(12.dp))
                 Text("Nueva lista de reproducción", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary)
+            }
+        }
+        item {
+            Row(
+                Modifier.fillMaxWidth().clickable(onClick = onNewSmart).padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Filled.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.size(12.dp))
+                Text("Nueva lista inteligente", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary)
             }
         }
         if (playlists.isEmpty()) {
@@ -247,12 +264,15 @@ private fun PlaylistsTab(playlists: List<Playlist>, onOpenPlaylist: (Long) -> Un
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(Icons.Filled.PlaylistPlay, contentDescription = null)
+                Icon(
+                    if (playlist.isSmart) Icons.Filled.AutoAwesome else Icons.Filled.PlaylistPlay,
+                    contentDescription = null,
+                )
                 Spacer(Modifier.size(12.dp))
                 Column {
                     Text(playlist.name, style = MaterialTheme.typography.bodyLarge)
                     Text(
-                        "${playlist.trackCount} pistas",
+                        if (playlist.isSmart) "Lista inteligente" else "${playlist.trackCount} pistas",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

@@ -26,8 +26,10 @@ import com.micasong.player.data.smart.SmartPlaylistDefinition
 import com.micasong.player.data.smart.SmartQueueExtender
 import com.micasong.player.data.smart.SmartQueueMode
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -107,7 +109,20 @@ class MediaRepository @Inject constructor(
     fun albumsByArtist(id: Long): Flow<List<Album>> = musicDao.albumsByArtist(id).map { it.map { e -> e.toDomain() } }
     fun tracksByArtist(id: Long): Flow<List<Track>> = musicDao.tracksByArtist(id).map { it.map { e -> e.toDomain() } }
     fun tracksByGenre(name: String): Flow<List<Track>> = musicDao.tracksByGenre(name).map { it.map { e -> e.toDomain() } }
-    fun tracksInPlaylist(id: Long): Flow<List<Track>> = playlistDao.tracksInPlaylist(id).map { it.map { e -> e.toDomain() } }
+    /**
+     * Tracks of a playlist. A normal playlist returns its stored members; a smart playlist (spec
+     * §31) re-evaluates its rule tree against the live library every time the catalog changes.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun tracksInPlaylist(id: Long): Flow<List<Track>> =
+        playlistDao.playlist(id).flatMapLatest { pl ->
+            if (pl?.isSmart == true) {
+                val def = SmartPlaylistDefinition.fromJson(pl.smartRulesJson) ?: SmartPlaylistDefinition()
+                musicDao.allTracks().map { list -> def.apply(list.map { e -> e.toDomain() }) }
+            } else {
+                playlistDao.tracksInPlaylist(id).map { it.map { e -> e.toDomain() } }
+            }
+        }
 
     // ---- Search ----
     fun searchTracks(q: String): Flow<List<Track>> = musicDao.searchTracks(q).map { it.map { e -> e.toDomain() } }
@@ -163,6 +178,39 @@ class MediaRepository @Inject constructor(
         val all = musicDao.allTracks().first().map { it.toDomain() }
         return def.apply(all)
     }
+
+    /** Create a dynamic smart playlist that stores its rule tree as JSON on the playlist row. */
+    suspend fun createSmartPlaylist(name: String, def: SmartPlaylistDefinition): Long =
+        playlistDao.upsert(
+            com.micasong.player.data.db.PlaylistEntity(
+                name = name,
+                providerId = LOCAL_PROVIDER_ID,
+                isSmart = true,
+                smartRulesJson = SmartPlaylistDefinition.toJson(def),
+                sortOrder = def.sortField.name,
+                limit = def.limit,
+            )
+        )
+
+    /** Replace an existing smart playlist's name and rule tree. */
+    suspend fun updateSmartPlaylist(playlistId: Long, name: String, def: SmartPlaylistDefinition) {
+        playlistDao.getPlaylist(playlistId)?.let {
+            playlistDao.upsert(
+                it.copy(
+                    name = name,
+                    isSmart = true,
+                    smartRulesJson = SmartPlaylistDefinition.toJson(def),
+                    sortOrder = def.sortField.name,
+                    limit = def.limit,
+                )
+            )
+        }
+    }
+
+    /** The stored rule tree of a smart playlist, or null if it isn't one. */
+    suspend fun smartPlaylistDefinition(playlistId: Long): SmartPlaylistDefinition? =
+        playlistDao.getPlaylist(playlistId)?.takeIf { it.isSmart }
+            ?.let { SmartPlaylistDefinition.fromJson(it.smartRulesJson) }
 
     // ---- Smart Queue / Smart Flow (spec §16) ----
     /** Tracks to append at the end of the queue for the given Smart Queue mode. */
