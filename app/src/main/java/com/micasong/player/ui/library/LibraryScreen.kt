@@ -19,9 +19,16 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.PlaylistPlay
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Tab
@@ -43,6 +50,7 @@ import com.micasong.player.data.model.Album
 import com.micasong.player.data.model.Artist
 import com.micasong.player.data.model.Genre
 import com.micasong.player.data.model.Playlist
+import com.micasong.player.data.model.Track
 import com.micasong.player.ui.components.MediaArtwork
 import com.micasong.player.ui.components.TrackRow
 import com.micasong.player.ui.components.formatDuration
@@ -58,6 +66,9 @@ fun LibraryScreen(
     viewModel: LibraryViewModel = hiltViewModel(),
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
+    var showCreate by remember { mutableStateOf(false) }
+    var addToPlaylistTrack by remember { mutableStateOf<Track?>(null) }
+    val playlists by viewModel.playlists.collectAsStateWithLifecycle()
 
     Column(Modifier.fillMaxSize()) {
         ScrollableTabRow(selectedTabIndex = selectedTab, edgePadding = 12.dp) {
@@ -72,10 +83,26 @@ fun LibraryScreen(
         when (selectedTab) {
             0 -> AlbumsTab(viewModel.albums.collectAsStateWithLifecycle().value, onOpenAlbum)
             1 -> ArtistsTab(viewModel.artists.collectAsStateWithLifecycle().value, onOpenArtist)
-            2 -> SongsTab(viewModel)
+            2 -> SongsTab(viewModel, onAddToPlaylist = { addToPlaylistTrack = it })
             3 -> GenresTab(viewModel.genres.collectAsStateWithLifecycle().value, onOpenGenre)
-            4 -> PlaylistsTab(viewModel.playlists.collectAsStateWithLifecycle().value, onOpenPlaylist)
+            4 -> PlaylistsTab(playlists, onOpenPlaylist, onCreate = { showCreate = true })
         }
+    }
+
+    if (showCreate) {
+        NameDialog(
+            title = "Nueva lista de reproducción",
+            onDismiss = { showCreate = false },
+            onConfirm = { name -> viewModel.createPlaylist(name); showCreate = false },
+        )
+    }
+    addToPlaylistTrack?.let { track ->
+        AddToPlaylistDialog(
+            playlists = playlists,
+            onDismiss = { addToPlaylistTrack = null },
+            onPick = { playlistId -> viewModel.addTrackToPlaylist(playlistId, track.id); addToPlaylistTrack = null },
+            onCreateNew = { name -> viewModel.createPlaylistWithTrack(name, track.id); addToPlaylistTrack = null },
+        )
     }
 }
 
@@ -137,7 +164,7 @@ private fun ArtistsTab(artists: List<Artist>, onOpenArtist: (Long) -> Unit) {
 }
 
 @Composable
-private fun SongsTab(viewModel: LibraryViewModel) {
+private fun SongsTab(viewModel: LibraryViewModel, onAddToPlaylist: (Track) -> Unit) {
     val tracks by viewModel.tracks.collectAsStateWithLifecycle()
     LazyColumn(contentPadding = PaddingValues(vertical = 8.dp)) {
         itemsIndexed(tracks, key = { _, t -> t.id }) { index, track ->
@@ -147,6 +174,7 @@ private fun SongsTab(viewModel: LibraryViewModel) {
                 artworkUri = track.artworkUri,
                 durationLabel = formatDuration(track.durationMs),
                 onClick = { viewModel.playAllTracks(index) },
+                onOverflow = { onAddToPlaylist(track) },
             )
         }
     }
@@ -169,12 +197,28 @@ private fun GenresTab(genres: List<Genre>, onOpenGenre: (String) -> Unit) {
 }
 
 @Composable
-private fun PlaylistsTab(playlists: List<Playlist>, onOpenPlaylist: (Long) -> Unit) {
-    if (playlists.isEmpty()) {
-        EmptyTab("No hay listas de reproducción todavía.")
-        return
-    }
+private fun PlaylistsTab(playlists: List<Playlist>, onOpenPlaylist: (Long) -> Unit, onCreate: () -> Unit) {
     LazyColumn {
+        item {
+            Row(
+                Modifier.fillMaxWidth().clickable(onClick = onCreate).padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Filled.Add, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.size(12.dp))
+                Text("Nueva lista de reproducción", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary)
+            }
+        }
+        if (playlists.isEmpty()) {
+            item {
+                Text(
+                    "No hay listas de reproducción todavía.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(16.dp),
+                )
+            }
+        }
         items(playlists, key = { it.id }) { playlist ->
             Row(
                 Modifier
@@ -207,4 +251,64 @@ private fun EmptyTab(message: String) {
     ) {
         Text(message, style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center)
     }
+}
+
+@Composable
+private fun NameDialog(title: String, onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
+    var name by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            OutlinedTextField(name, { name = it }, singleLine = true, label = { Text("Nombre") }, modifier = Modifier.fillMaxWidth())
+        },
+        confirmButton = { TextButton(onClick = { onConfirm(name) }, enabled = name.isNotBlank()) { Text("Crear") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
+    )
+}
+
+@Composable
+private fun AddToPlaylistDialog(
+    playlists: List<Playlist>,
+    onDismiss: () -> Unit,
+    onPick: (Long) -> Unit,
+    onCreateNew: (String) -> Unit,
+) {
+    var creating by remember { mutableStateOf(false) }
+    var name by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Añadir a lista") },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                Row(
+                    Modifier.fillMaxWidth().clickable { creating = true }.padding(vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Filled.Add, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.size(12.dp))
+                    Text("Nueva lista…", color = MaterialTheme.colorScheme.primary)
+                }
+                if (creating) {
+                    OutlinedTextField(name, { name = it }, singleLine = true, label = { Text("Nombre") }, modifier = Modifier.fillMaxWidth())
+                }
+                playlists.forEach { pl ->
+                    Row(
+                        Modifier.fillMaxWidth().clickable { onPick(pl.id) }.padding(vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(Icons.Filled.PlaylistPlay, contentDescription = null)
+                        Spacer(Modifier.size(12.dp))
+                        Text(pl.name)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            if (creating) {
+                TextButton(onClick = { onCreateNew(name) }, enabled = name.isNotBlank()) { Text("Crear y añadir") }
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cerrar") } },
+    )
 }

@@ -32,6 +32,23 @@ class LibraryViewModel @Inject constructor(
         if (list.isNotEmpty()) playback.playTracks(list, startIndex)
     }
 
+    // ---- Playlist management (spec §32) ----
+    fun createPlaylist(name: String) {
+        if (name.isNotBlank()) viewModelScope.launch { repository.createPlaylist(name.trim()) }
+    }
+
+    fun addTrackToPlaylist(playlistId: Long, trackId: Long) {
+        viewModelScope.launch { repository.addTracksToPlaylist(playlistId, listOf(trackId)) }
+    }
+
+    fun createPlaylistWithTrack(name: String, trackId: Long) {
+        if (name.isBlank()) return
+        viewModelScope.launch {
+            val id = repository.createPlaylist(name.trim())
+            repository.addTracksToPlaylist(id, listOf(trackId))
+        }
+    }
+
     private fun scope() = viewModelScope
     private fun started() = SharingStarted.WhileSubscribed(5000)
 }
