@@ -302,6 +302,21 @@ class MediaRepository @Inject constructor(
 
     suspend fun trackById(id: Long): Track? = musicDao.trackById(id)?.toDomain()
     fun trackFlow(id: Long): Flow<Track?> = musicDao.trackByIdFlow(id).map { it?.toDomain() }
+
+    // ---- Lyrics (spec §41) ----
+    private val lyricsDir = java.io.File(context.filesDir, "lyrics").apply { mkdirs() }
+
+    /** Lyrics for a track: cached on disk, else fetched from its provider and parsed (spec §41). */
+    suspend fun lyricsFor(trackId: Long): com.micasong.player.data.lyrics.Lyrics? {
+        val cache = java.io.File(lyricsDir, "$trackId.lrc")
+        if (cache.exists()) return com.micasong.player.data.lyrics.LrcParser.parse(cache.readText())
+        val track = musicDao.trackById(trackId) ?: return null
+        if (track.providerId == LOCAL_PROVIDER_ID) return null // local sidecar lyrics: future step
+        val provider = buildProviders().firstOrNull { it.config.id == track.providerId } ?: return null
+        val raw = runCatching { provider.lyrics(track) }.getOrNull() ?: return null
+        runCatching { cache.writeText(raw) }
+        return com.micasong.player.data.lyrics.LrcParser.parse(raw)
+    }
     suspend fun tracksByIds(ids: List<Long>): List<Track> = musicDao.tracksByIds(ids).map { it.toDomain() }
 
     // ---- Sync ----

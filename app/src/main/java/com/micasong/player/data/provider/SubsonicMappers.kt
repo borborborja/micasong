@@ -49,4 +49,41 @@ object SubsonicMappers {
             dateAdded = 0L,
         )
     }
+
+    /**
+     * Convert an OpenSubsonic `getLyricsBySongId` response to LRC text (spec §41), or plain text
+     * when the lines carry no timing. Returns null when the response has no lyrics.
+     */
+    fun parseLyrics(json: JSONObject): String? {
+        val structured = json.optJSONObject("subsonic-response")
+            ?.optJSONObject("lyricsList")
+            ?.optJSONArray("structuredLyrics")
+            ?.optJSONObject(0)
+        if (structured != null) {
+            val lines = structured.optJSONArray("line") ?: return null
+            val synced = structured.optBoolean("synced", false)
+            val sb = StringBuilder()
+            for (i in 0 until lines.length()) {
+                val line = lines.getJSONObject(i)
+                val value = line.optString("value")
+                if (synced && line.has("start")) {
+                    sb.append(lrcTimestamp(line.optLong("start"))).append(value).append('\n')
+                } else {
+                    sb.append(value).append('\n')
+                }
+            }
+            return sb.toString().ifBlank { null }
+        }
+        // Legacy Subsonic getLyrics: { "lyrics": { "value": "..." } } (plain).
+        val legacy = json.optJSONObject("subsonic-response")?.optJSONObject("lyrics")?.optString("value")
+        return legacy?.ifBlank { null }
+    }
+
+    private fun lrcTimestamp(ms: Long): String {
+        val totalCs = ms / 10
+        val minutes = totalCs / 6000
+        val seconds = (totalCs / 100) % 60
+        val centis = totalCs % 100
+        return "[%02d:%02d.%02d]".format(minutes, seconds, centis)
+    }
 }

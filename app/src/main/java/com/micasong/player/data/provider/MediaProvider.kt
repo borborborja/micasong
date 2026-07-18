@@ -81,4 +81,10 @@ interface MediaProvider {
      * servers it is a `stream` endpoint carrying the negotiated `maxBitRate`/`format`.
      */
     suspend fun streamUri(track: TrackEntity, maxBitrate: Int): String
+
+    /**
+     * Raw lyrics for a track (LRC text if synced, plain text otherwise), or null if the backend
+     * has none (spec §41). Default: unsupported.
+     */
+    suspend fun lyrics(track: TrackEntity): String? = null
 }

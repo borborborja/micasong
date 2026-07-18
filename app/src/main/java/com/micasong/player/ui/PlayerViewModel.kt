@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -28,6 +29,14 @@ class PlayerViewModel @Inject constructor(
 ) : ViewModel() {
 
     val state = playback.state
+
+    /** Lyrics of the current track (spec §41), fetched+cached when the track changes. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val currentLyrics: StateFlow<com.micasong.player.data.lyrics.Lyrics?> = state
+        .map { it.mediaId?.removePrefix("track/")?.toLongOrNull() }
+        .distinctUntilChanged()
+        .mapLatest { id -> if (id == null) null else repository.lyricsFor(id) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     /** 0–10 rating of the track currently playing, reacting to DB changes (spec §11). */
     @OptIn(ExperimentalCoroutinesApi::class)

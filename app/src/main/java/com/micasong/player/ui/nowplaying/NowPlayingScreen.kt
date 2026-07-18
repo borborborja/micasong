@@ -13,14 +13,20 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Lyrics
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.QueueMusic
@@ -81,9 +87,12 @@ fun NowPlayingScreen(
     val smartFlow by viewModel.smartFlowMode.collectAsStateWithLifecycle()
     val smartQueue by viewModel.smartQueueMode.collectAsStateWithLifecycle()
 
+    val lyrics by viewModel.currentLyrics.collectAsStateWithLifecycle()
+
     var scrubbing by remember { mutableFloatStateOf(-1f) }
     var sleepMenuOpen by remember { mutableStateOf(false) }
     var showQueue by remember { mutableStateOf(false) }
+    var showLyrics by remember { mutableStateOf(false) }
 
     Column(
         Modifier
@@ -102,6 +111,9 @@ fun NowPlayingScreen(
                 textAlign = TextAlign.Center,
             )
             CastButton()
+            IconButton(onClick = { showLyrics = true }) {
+                Icon(Icons.Filled.Lyrics, contentDescription = "Letra")
+            }
             IconButton(onClick = { showQueue = true }) {
                 Icon(Icons.Filled.QueueMusic, contentDescription = "Cola de reproducción")
             }
@@ -232,6 +244,10 @@ fun NowPlayingScreen(
         }
     }
 
+    if (showLyrics) {
+        LyricsSheet(lyrics = lyrics, positionMs = state.positionMs, onDismiss = { showLyrics = false })
+    }
+
     if (showQueue) {
         QueueSheet(
             queue = queue,
@@ -325,6 +341,55 @@ private fun RatingBar(rating: Int, onRate: (Int) -> Unit) {
                     .clickable { onRate(if (rating == value) 0 else value) },
             )
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun LyricsSheet(
+    lyrics: com.micasong.player.data.lyrics.Lyrics?,
+    positionMs: Long,
+    onDismiss: () -> Unit,
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState()) {
+        Text(
+            "Letra",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+        )
+        if (lyrics == null || lyrics.lines.isEmpty()) {
+            Text(
+                "No hay letra disponible para esta pista.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(24.dp),
+            )
+            Spacer(Modifier.height(24.dp))
+            return@ModalBottomSheet
+        }
+        val active = lyrics.activeIndexAt(positionMs)
+        val listState = rememberLazyListState()
+        LaunchedEffect(active) {
+            if (active >= 0) listState.animateScrollToItem(active.coerceAtLeast(0))
+        }
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxWidth().heightIn(max = 460.dp),
+            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp),
+        ) {
+            itemsIndexed(lyrics.lines) { index, line ->
+                Text(
+                    line.text.ifBlank { "♪" },
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = if (index == active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = if (index == active) FontWeight.Bold else FontWeight.Normal,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                )
+            }
+        }
+        Spacer(Modifier.height(24.dp))
     }
 }
 

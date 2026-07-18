@@ -135,6 +135,13 @@ class SubsonicProvider(
     // Tracks already carry a ready-to-play, authenticated stream URL in mediaUri (built at sync).
     override suspend fun streamUri(track: TrackEntity, maxBitrate: Int): String = track.mediaUri
 
+    /** Fetch lyrics via OpenSubsonic getLyricsBySongId (spec §41); the server id is in the URL. */
+    override suspend fun lyrics(track: TrackEntity): String? = withContext(Dispatchers.IO) {
+        val serverId = android.net.Uri.parse(track.mediaUri).getQueryParameter("id") ?: return@withContext null
+        val json = getJson(endpoint("getLyricsBySongId", mapOf("id" to serverId))) ?: return@withContext null
+        SubsonicMappers.parseLyrics(json)
+    }
+
     fun coverArtUri(coverArtId: String?): String? =
         coverArtId?.takeIf { it.isNotBlank() }?.let { endpoint("getCoverArt", mapOf("id" to it, "size" to "512")) }
 
