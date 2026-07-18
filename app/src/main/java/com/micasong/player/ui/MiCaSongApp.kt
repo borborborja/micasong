@@ -83,7 +83,11 @@ fun MiCaSongApp() {
                 HomeScreen(
                     onOpenAlbum = { navController.navigate(Routes.album(it)) },
                     onOpenArtist = { navController.navigate(Routes.artist(it)) },
+                    onOpenQueues = { navController.navigate(Routes.QUEUES) },
                 )
+            }
+            composable(Routes.QUEUES) {
+                com.micasong.player.ui.queues.ColasScreen(onBack = { navController.popBackStack() })
             }
             composable(TopLevelDestination.LIBRARY.route) {
                 LibraryScreen(

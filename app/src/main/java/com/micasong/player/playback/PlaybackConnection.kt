@@ -69,6 +69,7 @@ class PlaybackConnection @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val repository: MediaRepository,
     private val settings: com.micasong.player.data.settings.SettingsRepository,
+    private val queueStore: com.micasong.player.data.queue.QueueStore,
 ) {
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var controller: MediaController? = null
@@ -368,6 +369,51 @@ class PlaybackConnection @Inject constructor(
         sleepJob = null
         _sleepRemainingMs.value = null
     }
+
+    // ---- Multiple saved queues ("Colas", spec §16) ----
+    val queueBook = queueStore.queueBook
+
+    /** Save the current playback queue as a named, independent queue (spec §16). */
+    fun saveCurrentQueue(name: String) {
+        val c = controller ?: return
+        val trackIds = (0 until c.mediaItemCount).mapNotNull {
+            c.getMediaItemAt(it).mediaId.removePrefix("track/").toLongOrNull()
+        }
+        if (trackIds.isEmpty()) return
+        val saved = com.micasong.player.data.queue.SavedQueue(
+            id = System.currentTimeMillis(),
+            name = name.ifBlank { "Cola" },
+            trackIds = trackIds,
+            currentIndex = c.currentMediaItemIndex.coerceAtLeast(0),
+            positionMs = c.currentPosition.coerceAtLeast(0),
+            repeatMode = c.repeatMode,
+            shuffle = c.shuffleModeEnabled,
+            speed = c.playbackParameters.speed,
+        )
+        scope.launch { queueStore.update { it.add(saved) } }
+    }
+
+    /** Load a saved queue into the player, restoring its position and modes (spec §16). */
+    fun loadQueue(id: Long) {
+        scope.launch {
+            val saved = queueStore.current().queues.firstOrNull { it.id == id } ?: return@launch
+            val tracks = repository.tracksByIds(saved.trackIds)
+                .sortedBy { saved.trackIds.indexOf(it.id) } // preserve the saved order
+            val c = controller ?: return@launch
+            if (tracks.isEmpty()) return@launch
+            c.shuffleModeEnabled = false
+            c.setMediaItems(tracks.toPlayableItems(), saved.currentIndex.coerceIn(0, tracks.lastIndex), saved.positionMs)
+            c.repeatMode = saved.repeatMode
+            c.shuffleModeEnabled = saved.shuffle
+            c.setPlaybackSpeed(saved.speed)
+            c.prepare()
+            c.play()
+            queueStore.update { it.switchTo(id) }
+        }
+    }
+
+    fun deleteQueue(id: Long) { scope.launch { queueStore.update { it.remove(id) } } }
+    fun renameQueue(id: Long, name: String) { scope.launch { queueStore.update { it.rename(id, name) } } }
 
     /** Jump to queue position [index] and start playing it (spec §13). */
     fun jumpTo(index: Int) {

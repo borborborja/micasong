@@ -100,6 +100,12 @@ class PlayerViewModel @Inject constructor(
     fun jumpToQueueItem(index: Int) = playback.jumpTo(index)
     fun removeQueueItem(index: Int) = playback.removeQueueItem(index)
 
+    // ---- Multiple saved queues ("Colas", spec §16) ----
+    val queueBook = playback.queueBook
+    fun saveCurrentQueue(name: String) = playback.saveCurrentQueue(name)
+    fun loadQueue(id: Long) = playback.loadQueue(id)
+    fun deleteQueue(id: Long) = playback.deleteQueue(id)
+
     // ---- Smart Queue / Smart Flow (spec §16) ----
     val smartFlowMode = playback.smartFlowMode
     val smartQueueMode = playback.smartQueueMode

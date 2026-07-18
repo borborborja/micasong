@@ -67,6 +67,7 @@ private val audioPermission: String
 fun HomeScreen(
     onOpenAlbum: (Long) -> Unit,
     onOpenArtist: (Long) -> Unit,
+    onOpenQueues: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -120,6 +121,7 @@ fun HomeScreen(
                     onTrackMix = viewModel::playTrackMix,
                     onAlbumMix = viewModel::playAlbumMix,
                     onDecadeMix = viewModel::playTrackMix,
+                    onOpenQueues = onOpenQueues,
                 )
             }
 
@@ -171,6 +173,7 @@ private fun ShortcutGrid(
     onTrackMix: () -> Unit,
     onAlbumMix: () -> Unit,
     onDecadeMix: () -> Unit,
+    onOpenQueues: () -> Unit,
 ) {
     Column(Modifier.padding(horizontal = 16.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -180,7 +183,7 @@ private fun ShortcutGrid(
         Spacer(Modifier.height(12.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             ShortcutCard("Mix de la década", Icons.Filled.CalendarMonth, Modifier.weight(1f), onDecadeMix)
-            ShortcutCard("Colas", Icons.Filled.QueueMusic, Modifier.weight(1f)) { }
+            ShortcutCard("Colas", Icons.Filled.QueueMusic, Modifier.weight(1f)) { onOpenQueues() }
         }
     }
 }

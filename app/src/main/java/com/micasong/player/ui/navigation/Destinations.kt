@@ -31,6 +31,7 @@ object Routes {
     const val GENRE = "genre/{genreName}"
     const val PLAYLIST = "playlist/{playlistId}"
     const val SMART_PLAYLIST_NEW = "smart_playlist/new"
+    const val QUEUES = "queues"
     const val NOW_PLAYING = "now_playing"
     const val PROVIDERS = "providers"
     const val EQUALIZER = "equalizer"
