@@ -30,6 +30,7 @@ import com.micasong.player.data.settings.ThemeMode
 fun SettingsScreen(
     onOpenProviders: () -> Unit = {},
     onOpenEqualizer: () -> Unit = {},
+    onOpenBackup: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -132,6 +133,16 @@ fun SettingsScreen(
                 title = "Proveedores de medios",
                 subtitle = "Este dispositivo · añadir Subsonic, Jellyfin, Plex…",
                 onClick = onOpenProviders,
+            )
+        }
+
+        // ---- Datos: copia de seguridad (spec §43) ----
+        item { CategoryHeading("Datos") }
+        item {
+            SettingRow(
+                title = "Copia de seguridad",
+                subtitle = "Exporta o restaura ajustes, servidores y listas (archivo cifrado .micabkp)",
+                onClick = onOpenBackup,
             )
         }
 

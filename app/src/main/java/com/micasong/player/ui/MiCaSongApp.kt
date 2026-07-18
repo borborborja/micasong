@@ -103,6 +103,7 @@ fun MiCaSongApp() {
                 SettingsScreen(
                     onOpenProviders = { navController.navigate(Routes.PROVIDERS) },
                     onOpenEqualizer = { navController.navigate(Routes.EQUALIZER) },
+                    onOpenBackup = { navController.navigate(Routes.BACKUP) },
                 )
             }
             composable(Routes.PROVIDERS) {
@@ -110,6 +111,9 @@ fun MiCaSongApp() {
             }
             composable(Routes.EQUALIZER) {
                 com.micasong.player.ui.settings.EqScreen(onBack = { navController.popBackStack() })
+            }
+            composable(Routes.BACKUP) {
+                com.micasong.player.ui.settings.BackupScreen(onBack = { navController.popBackStack() })
             }
 
             composable(

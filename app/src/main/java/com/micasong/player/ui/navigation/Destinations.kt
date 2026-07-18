@@ -33,6 +33,7 @@ object Routes {
     const val NOW_PLAYING = "now_playing"
     const val PROVIDERS = "providers"
     const val EQUALIZER = "equalizer"
+    const val BACKUP = "backup"
 
     fun album(id: Long) = "album/$id"
     fun artist(id: Long) = "artist/$id"
