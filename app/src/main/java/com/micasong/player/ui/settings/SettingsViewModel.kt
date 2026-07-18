@@ -58,6 +58,7 @@ class SettingsViewModel @Inject constructor(
     fun setIgnoreArticles(v: Boolean) = viewModelScope.launch { settings.setIgnoreArticles(v) }
     fun resetToDefaults() = viewModelScope.launch { settings.resetToDefaults() }
     fun setNowPlayingTemplate(t: String) = viewModelScope.launch { settings.setNowPlayingTemplate(t) }
+    fun setAutoTab(tab: String, enabled: Boolean) = viewModelScope.launch { settings.setAutoTab(tab, enabled) }
 
     // ---- Offline / cache (spec §35) ----
     fun setDownloadsWifiOnly(v: Boolean) = viewModelScope.launch { settings.setDownloadsWifiOnly(v) }

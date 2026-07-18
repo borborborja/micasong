@@ -392,13 +392,19 @@ fun OfflineSettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hil
     }
 }
 
-/** Android Auto — informational (§44). */
+/** Android Auto: choose which browse tabs appear in the car (spec §38). */
 @Composable
-fun AndroidAutoSettingsScreen(onBack: () -> Unit) = InfoScreen(
-    "Android Auto", onBack,
-    "MiCaSong ya es compatible con Android Auto: conecta el teléfono al coche y navega por tu " +
-        "biblioteca, favoritos y búsquedas por voz. Las opciones de personalización llegarán pronto.",
-)
+fun AndroidAutoSettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hiltViewModel()) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    DetailScaffold("Android Auto", onBack) {
+        item { InfoParagraph("Elige las pestañas que se muestran al navegar en el coche.") }
+        item { CategoryHeading("Pestañas") }
+        item { SwitchRow("Inicio", "Álbumes más escuchados", state.autoTabHome) { viewModel.setAutoTab("home", it) } }
+        item { SwitchRow("Recientes", "Últimas pistas reproducidas", state.autoTabRecent) { viewModel.setAutoTab("recent", it) } }
+        item { SwitchRow("Biblioteca", "Álbumes, artistas, canciones y géneros", state.autoTabLibrary) { viewModel.setAutoTab("library", it) } }
+        item { SwitchRow("Favoritos", "Tus pistas favoritas", state.autoTabFavorites) { viewModel.setAutoTab("favorites", it) } }
+    }
+}
 
 /** Manage generated files — placeholder (§44). */
 @Composable

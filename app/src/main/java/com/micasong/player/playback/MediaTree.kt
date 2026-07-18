@@ -20,6 +20,7 @@ import javax.inject.Singleton
 @Singleton
 class MediaTree @Inject constructor(
     private val repository: MediaRepository,
+    private val settings: com.micasong.player.data.settings.SettingsRepository,
 ) {
     object Ids {
         const val ROOT = "root"
@@ -42,12 +43,17 @@ class MediaTree @Inject constructor(
     fun rootItem(): MediaItem = browsable(Ids.ROOT, "MiCaSong")
 
     suspend fun children(parentId: String): List<MediaItem> = when (parentId) {
-        Ids.ROOT -> listOf(
-            browsable(Ids.TAB_HOME, "Inicio"),
-            browsable(Ids.TAB_RECENT, "Recientes"),
-            browsable(Ids.TAB_LIBRARY, "Biblioteca"),
-            browsable(Ids.TAB_FAVORITES, "Favoritos"),
-        )
+        Ids.ROOT -> {
+            // Only the tabs the user enabled for Android Auto (spec §38); never empty.
+            val s = settings.settings.first()
+            val tabs = buildList {
+                if (s.autoTabHome) add(browsable(Ids.TAB_HOME, "Inicio"))
+                if (s.autoTabRecent) add(browsable(Ids.TAB_RECENT, "Recientes"))
+                if (s.autoTabLibrary) add(browsable(Ids.TAB_LIBRARY, "Biblioteca"))
+                if (s.autoTabFavorites) add(browsable(Ids.TAB_FAVORITES, "Favoritos"))
+            }
+            tabs.ifEmpty { listOf(browsable(Ids.TAB_LIBRARY, "Biblioteca")) }
+        }
         Ids.TAB_LIBRARY -> listOf(
             browsable(Ids.NODE_ALBUMS, "Álbumes"),
             browsable(Ids.NODE_ARTISTS, "Artistas"),

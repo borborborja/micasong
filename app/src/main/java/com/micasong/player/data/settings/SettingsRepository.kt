@@ -56,6 +56,11 @@ data class UserSettings(
     val ignoreArticlesOnSort: Boolean = true,
     // Now Playing subtitle string template (spec §27)
     val nowPlayingTemplate: String = "%artist%{ · %album%}",
+    // Android Auto tabs (spec §38)
+    val autoTabHome: Boolean = true,
+    val autoTabRecent: Boolean = true,
+    val autoTabLibrary: Boolean = true,
+    val autoTabFavorites: Boolean = true,
 )
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
@@ -88,6 +93,10 @@ class SettingsRepository @Inject constructor(
         val HALF_STARS = booleanPreferencesKey("half_stars")
         val IGNORE_ARTICLES = booleanPreferencesKey("ignore_articles")
         val NOW_PLAYING_TEMPLATE = stringPreferencesKey("now_playing_template")
+        val AUTO_TAB_HOME = booleanPreferencesKey("auto_tab_home")
+        val AUTO_TAB_RECENT = booleanPreferencesKey("auto_tab_recent")
+        val AUTO_TAB_LIBRARY = booleanPreferencesKey("auto_tab_library")
+        val AUTO_TAB_FAVORITES = booleanPreferencesKey("auto_tab_favorites")
     }
 
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
@@ -127,6 +136,10 @@ class SettingsRepository @Inject constructor(
             halfStars = p[Keys.HALF_STARS] ?: true,
             ignoreArticlesOnSort = p[Keys.IGNORE_ARTICLES] ?: true,
             nowPlayingTemplate = p[Keys.NOW_PLAYING_TEMPLATE] ?: "%artist%{ · %album%}",
+            autoTabHome = p[Keys.AUTO_TAB_HOME] ?: true,
+            autoTabRecent = p[Keys.AUTO_TAB_RECENT] ?: true,
+            autoTabLibrary = p[Keys.AUTO_TAB_LIBRARY] ?: true,
+            autoTabFavorites = p[Keys.AUTO_TAB_FAVORITES] ?: true,
         )
     }
 
@@ -152,6 +165,14 @@ class SettingsRepository @Inject constructor(
     suspend fun setHalfStars(v: Boolean) = edit { it[Keys.HALF_STARS] = v }
     suspend fun setIgnoreArticles(v: Boolean) = edit { it[Keys.IGNORE_ARTICLES] = v }
     suspend fun setNowPlayingTemplate(t: String) = edit { it[Keys.NOW_PLAYING_TEMPLATE] = t }
+    suspend fun setAutoTab(tab: String, enabled: Boolean) = edit {
+        when (tab) {
+            "home" -> it[Keys.AUTO_TAB_HOME] = enabled
+            "recent" -> it[Keys.AUTO_TAB_RECENT] = enabled
+            "library" -> it[Keys.AUTO_TAB_LIBRARY] = enabled
+            "favorites" -> it[Keys.AUTO_TAB_FAVORITES] = enabled
+        }
+    }
 
     /** Reset every preference to its default (spec §44 "Restaurar valores predeterminados"). */
     suspend fun resetToDefaults() {
@@ -183,6 +204,10 @@ class SettingsRepository @Inject constructor(
         it[Keys.HALF_STARS] = s.halfStars
         it[Keys.IGNORE_ARTICLES] = s.ignoreArticlesOnSort
         it[Keys.NOW_PLAYING_TEMPLATE] = s.nowPlayingTemplate
+        it[Keys.AUTO_TAB_HOME] = s.autoTabHome
+        it[Keys.AUTO_TAB_RECENT] = s.autoTabRecent
+        it[Keys.AUTO_TAB_LIBRARY] = s.autoTabLibrary
+        it[Keys.AUTO_TAB_FAVORITES] = s.autoTabFavorites
     }
 
     private suspend fun edit(block: (androidx.datastore.preferences.core.MutablePreferences) -> Unit) {
