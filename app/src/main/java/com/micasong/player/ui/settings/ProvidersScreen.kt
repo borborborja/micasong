@@ -50,6 +50,8 @@ fun ProvidersScreen(
     val providers by viewModel.providers.collectAsStateWithLifecycle()
     val busy by viewModel.busy.collectAsStateWithLifecycle()
     val error by viewModel.error.collectAsStateWithLifecycle()
+    val syncState by viewModel.syncState.collectAsStateWithLifecycle()
+    val trackCount by viewModel.trackCount.collectAsStateWithLifecycle()
     var showAdd by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -70,15 +72,33 @@ fun ProvidersScreen(
         },
     ) { padding ->
         LazyColumn(Modifier.padding(padding), contentPadding = PaddingValues(vertical = 8.dp)) {
-            if (busy) {
-                item {
-                    androidx.compose.material3.LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = 16.dp))
-                    Text(
-                        "Conectando y sincronizando…",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                    )
+            // Live connection/sync status (spec §9).
+            item {
+                val syncing = busy || syncState.running
+                Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+                    if (syncing) {
+                        if (syncState.running && syncState.progress > 0f) {
+                            androidx.compose.material3.LinearProgressIndicator(
+                                progress = { syncState.progress },
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        } else {
+                            androidx.compose.material3.LinearProgressIndicator(Modifier.fillMaxWidth())
+                        }
+                        Text(
+                            syncState.message.ifBlank { "Conectando y sincronizando…" } +
+                                if (syncState.progress > 0f) " ${(syncState.progress * 100).toInt()}%" else "",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
+                    } else {
+                        Text(
+                            "$trackCount pistas en la biblioteca",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
             error?.let { message ->
@@ -168,9 +188,23 @@ private fun AddServerDialog(
                     FilterChip(type == ProviderType.AUDIOBOOKSHELF, { type = ProviderType.AUDIOBOOKSHELF }, { Text("AudioBookShelf") })
                 }
                 Spacer(Modifier.height(8.dp))
+                Text(
+                    providerHint(type),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(4.dp))
                 OutlinedTextField(name, { name = it }, label = { Text("Nombre") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(url, { url = it }, label = { Text("URL (http://host:puerto)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(user, { user = it }, label = { Text("Usuario") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(
+                    url, { url = it },
+                    label = { Text("URL del servidor") },
+                    placeholder = { Text("http://192.168.1.10:4533") },
+                    supportingText = { Text("Incluye http:// o https:// y el puerto. No añadas /rest al final.") },
+                    singleLine = true, modifier = Modifier.fillMaxWidth(),
+                )
+                if (type != ProviderType.PLEX) {
+                    OutlinedTextField(user, { user = it }, label = { Text("Usuario") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                }
                 OutlinedTextField(
                     secret, { secret = it },
                     label = {
@@ -188,7 +222,18 @@ private fun AddServerDialog(
                 )
             }
         },
-        confirmButton = { TextButton(onClick = { onAdd(type, name, url, user, secret) }, enabled = url.isNotBlank()) { Text("Añadir") } },
+        confirmButton = { TextButton(onClick = { onAdd(type, name, url, user, secret) }, enabled = url.isNotBlank()) { Text("Conectar") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
     )
+}
+
+private fun providerHint(type: ProviderType): String = when (type) {
+    ProviderType.SUBSONIC -> "Subsonic/OpenSubsonic/Navidrome/Gonic. Usa tu usuario y contraseña; se comprobará la conexión al conectar."
+    ProviderType.JELLYFIN -> "Jellyfin. Inicia sesión con tu usuario y contraseña."
+    ProviderType.EMBY -> "Emby. Inicia sesión con tu usuario y contraseña."
+    ProviderType.PLEX -> "Plex. Pega un token de acceso (X-Plex-Token)."
+    ProviderType.KODI -> "Kodi 19+ con el servidor web activado. Usuario y contraseña del servidor web."
+    ProviderType.WEBDAV -> "WebDAV. Usuario y contraseña; los archivos se listan por carpeta."
+    ProviderType.AUDIOBOOKSHELF -> "AudioBookShelf (experimental). Usuario y contraseña."
+    else -> ""
 }

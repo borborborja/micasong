@@ -53,8 +53,12 @@ class SubsonicProvider(
             val genres = LinkedHashMap<String, Int>()
             try {
                 onProgress(0f, "Conectando")
-                // Verify reachability first.
-                getJson(endpoint("ping")) ?: return@withContext ProviderSnapshot(emptyList(), emptyList(), emptyList(), emptyList())
+                // Verify reachability AND authentication first; a failed status means empty library.
+                val ping = getJson(endpoint("ping"))?.optJSONObject("subsonic-response")
+                if (ping?.optString("status") != "ok") {
+                    Log.w("SubsonicProvider", "ping not ok: ${ping?.optJSONObject("error")}")
+                    return@withContext ProviderSnapshot(emptyList(), emptyList(), emptyList(), emptyList())
+                }
 
                 onProgress(0.1f, "Recopilando artistas")
                 val artistsJson = getJson(endpoint("getArtists"))
@@ -134,6 +138,27 @@ class SubsonicProvider(
 
     // Tracks already carry a ready-to-play, authenticated stream URL in mediaUri (built at sync).
     override suspend fun streamUri(track: TrackEntity, maxBitrate: Int): String = track.mediaUri
+
+    /**
+     * Test the connection: pings the server and returns null on success, or a specific,
+     * user-facing error otherwise (spec §5.1). Used when adding a provider so misconfigurations
+     * surface immediately instead of producing a silent empty library.
+     */
+    suspend fun testConnection(): String? = withContext(Dispatchers.IO) {
+        if (config.primaryUrl.isNullOrBlank()) return@withContext "Introduce la URL del servidor."
+        val json = getJson(endpoint("ping"))
+            ?: return@withContext "No se pudo conectar. Revisa la URL y el puerto, y que el servidor esté encendido."
+        val resp = json.optJSONObject("subsonic-response")
+            ?: return@withContext "La respuesta no parece de un servidor Subsonic/OpenSubsonic."
+        if (resp.optString("status") == "ok") return@withContext null
+        val error = resp.optJSONObject("error")
+        when (error?.optInt("code")) {
+            40 -> "Usuario o contraseña incorrectos."
+            41, 44 -> "El servidor no acepta este método de autenticación. Prueba con una clave API o activa la autenticación heredada."
+            30 -> "La versión del servidor es incompatible."
+            else -> error?.optString("message")?.ifBlank { null } ?: "El servidor rechazó la conexión."
+        }
+    }
 
     /** Fetch lyrics via OpenSubsonic getLyricsBySongId (spec §41); the server id is in the URL. */
     override suspend fun lyrics(track: TrackEntity): String? = withContext(Dispatchers.IO) {

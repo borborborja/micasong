@@ -12,7 +12,9 @@ import kotlin.random.Random
  */
 object SubsonicAuth {
 
-    const val API_VERSION = "1.16.1"
+    // Request the documented minimum (spec §46) so any server ≥1.13 accepts us; requesting a higher
+    // version makes older Subsonic/Airsonic servers reject the call with error 30 "incompatible".
+    const val API_VERSION = "1.13.0"
 
     fun md5Hex(input: String): String =
         MessageDigest.getInstance("MD5").digest(input.toByteArray(Charsets.UTF_8))

@@ -24,6 +24,11 @@ class ProvidersViewModel @Inject constructor(
     val providers = repository.providerConfigs
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    /** Live sync progress (spec §9) so the screen shows what's happening after adding a server. */
+    val syncState = repository.syncState
+    val trackCount = repository.trackCount
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
     private val _busy = MutableStateFlow(false)
     val busy: StateFlow<Boolean> = _busy.asStateFlow()
 
@@ -65,6 +70,23 @@ class ProvidersViewModel @Inject constructor(
     ): ProviderConfig? {
         val displayName = name.ifBlank { url }
         return when (type) {
+            ProviderType.SUBSONIC -> {
+                // Validate reachability + auth up front so errors surface instead of an empty library.
+                val probe = com.micasong.player.data.provider.SubsonicProvider(
+                    ProviderConfig(id = 0, type = type, displayName = displayName, primaryUrl = url,
+                        username = username.trim(), secret = secret),
+                )
+                val error = probe.testConnection()
+                if (error != null) {
+                    _error.value = error
+                    null
+                } else {
+                    ProviderConfig(
+                        id = 0, type = type, displayName = displayName, primaryUrl = url,
+                        username = username.trim().ifBlank { null }, secret = secret.ifBlank { null },
+                    )
+                }
+            }
             ProviderType.JELLYFIN -> {
                 // Jellyfin needs a token + user id, obtained by logging in with user + password.
                 val session = JellyfinProvider.authenticate(url, username.trim(), secret)
