@@ -81,6 +81,7 @@ class MediaRepository @Inject constructor(
                 ProviderType.PLEX -> com.micasong.player.data.provider.PlexProvider(config)
                 ProviderType.KODI -> com.micasong.player.data.provider.KodiProvider(config)
                 ProviderType.WEBDAV -> com.micasong.player.data.provider.WebDavProvider(config)
+                ProviderType.AUDIOBOOKSHELF -> com.micasong.player.data.provider.AudioBookShelfProvider(config)
                 else -> SubsonicProvider(config)   // Subsonic/OpenSubsonic/Navidrome
             }
         }

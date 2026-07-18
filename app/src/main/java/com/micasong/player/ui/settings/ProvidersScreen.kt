@@ -165,6 +165,7 @@ private fun AddServerDialog(
                     FilterChip(type == ProviderType.PLEX, { type = ProviderType.PLEX }, { Text("Plex") })
                     FilterChip(type == ProviderType.KODI, { type = ProviderType.KODI }, { Text("Kodi") })
                     FilterChip(type == ProviderType.WEBDAV, { type = ProviderType.WEBDAV }, { Text("WebDAV") })
+                    FilterChip(type == ProviderType.AUDIOBOOKSHELF, { type = ProviderType.AUDIOBOOKSHELF }, { Text("AudioBookShelf") })
                 }
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(name, { name = it }, label = { Text("Nombre") }, singleLine = true, modifier = Modifier.fillMaxWidth())

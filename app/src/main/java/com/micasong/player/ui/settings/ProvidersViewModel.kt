@@ -90,6 +90,15 @@ class ProvidersViewModel @Inject constructor(
                     )
                 }
             }
+            ProviderType.AUDIOBOOKSHELF -> {
+                val session = com.micasong.player.data.provider.AudioBookShelfProvider.authenticate(url, username.trim(), secret)
+                if (session == null) {
+                    _error.value = "No se pudo iniciar sesión en AudioBookShelf. Revisa la URL, el usuario y la contraseña."
+                    null
+                } else {
+                    ProviderConfig(id = 0, type = type, displayName = displayName, primaryUrl = url, secret = session.token)
+                }
+            }
             else -> ProviderConfig(
                 id = 0, type = type, displayName = displayName, primaryUrl = url,
                 username = username.trim().ifBlank { null }, secret = secret.ifBlank { null },
