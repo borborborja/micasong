@@ -32,12 +32,32 @@ class MainActivity : ComponentActivity() {
         setContent {
             val rootViewModel: RootViewModel = hiltViewModel()
             val settings by rootViewModel.settings.collectAsStateWithLifecycle()
+            applyWindowPreferences(settings)
             MiCaSongTheme(
                 themeMode = settings.themeMode,
                 dynamicColor = settings.dynamicColor,
                 customThemeJson = settings.customThemeJson,
             ) {
                 MiCaSongApp()
+            }
+        }
+    }
+
+    /** Apply the Interfaz › Advanced window preferences (spec §44): keep-on, status bar, orientation. */
+    @androidx.compose.runtime.Composable
+    private fun applyWindowPreferences(settings: com.micasong.player.data.settings.UserSettings) {
+        androidx.compose.runtime.LaunchedEffect(settings.keepScreenOn, settings.hideStatusBar, settings.screenOrientation) {
+            if (settings.keepScreenOn) window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            else window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+
+            val controller = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
+            if (settings.hideStatusBar) controller.hide(androidx.core.view.WindowInsetsCompat.Type.statusBars())
+            else controller.show(androidx.core.view.WindowInsetsCompat.Type.statusBars())
+
+            requestedOrientation = when (settings.screenOrientation) {
+                com.micasong.player.data.settings.ScreenOrientation.PORTRAIT -> android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                com.micasong.player.data.settings.ScreenOrientation.LANDSCAPE -> android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                com.micasong.player.data.settings.ScreenOrientation.SYSTEM -> android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
             }
         }
     }

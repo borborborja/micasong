@@ -49,6 +49,15 @@ class SettingsViewModel @Inject constructor(
 
     fun setCrossfade(ms: Int) = viewModelScope.launch { settings.setCrossfade(ms) }
 
+    // ---- Interfaz › Advanced + Database (spec §44) ----
+    fun setKeepScreenOn(v: Boolean) = viewModelScope.launch { settings.setKeepScreenOn(v) }
+    fun setHideStatusBar(v: Boolean) = viewModelScope.launch { settings.setHideStatusBar(v) }
+    fun setScreenOrientation(o: com.micasong.player.data.settings.ScreenOrientation) = viewModelScope.launch { settings.setScreenOrientation(o) }
+    fun setShowTrackNumber(v: Boolean) = viewModelScope.launch { settings.setShowTrackNumber(v) }
+    fun setHalfStars(v: Boolean) = viewModelScope.launch { settings.setHalfStars(v) }
+    fun setIgnoreArticles(v: Boolean) = viewModelScope.launch { settings.setIgnoreArticles(v) }
+    fun resetToDefaults() = viewModelScope.launch { settings.resetToDefaults() }
+
     // ---- Offline / cache (spec §35) ----
     fun setDownloadsWifiOnly(v: Boolean) = viewModelScope.launch { settings.setDownloadsWifiOnly(v) }
     fun setRollingCacheMb(mb: Int) = viewModelScope.launch { settings.setRollingCacheMb(mb) }

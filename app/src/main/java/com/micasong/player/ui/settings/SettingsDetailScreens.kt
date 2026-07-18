@@ -109,6 +109,47 @@ fun InterfazSettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hi
             )
         }
 
+        item { CategoryHeading("Avanzado") }
+        item {
+            SwitchRow(
+                title = "Mantener pantalla encendida",
+                subtitle = "No apagar la pantalla mientras la app está en primer plano",
+                checked = state.keepScreenOn,
+                onChange = viewModel::setKeepScreenOn,
+            )
+        }
+        item {
+            SwitchRow(
+                title = "Ocultar barra de estado",
+                subtitle = "Modo inmersivo",
+                checked = state.hideStatusBar,
+                onChange = viewModel::setHideStatusBar,
+            )
+        }
+        item {
+            SwitchRow(
+                title = "Mostrar número de pista",
+                subtitle = "En las listas de canciones",
+                checked = state.showTrackNumber,
+                onChange = viewModel::setShowTrackNumber,
+            )
+        }
+        item { SettingRow(title = "Orientación de pantalla", subtitle = orientationLabel(state.screenOrientation)) }
+        item {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                com.micasong.player.data.settings.ScreenOrientation.entries.forEach { o ->
+                    FilterChip(
+                        selected = state.screenOrientation == o,
+                        onClick = { viewModel.setScreenOrientation(o) },
+                        label = { Text(orientationLabel(o)) },
+                    )
+                }
+            }
+        }
+
         item { CategoryHeading("Tema personalizado") }
         item {
             SettingRow(
@@ -210,9 +251,10 @@ private fun replayGainLabel(m: com.micasong.player.data.audio.ReplayGainMode): S
     com.micasong.player.data.audio.ReplayGainMode.AUTO -> "Auto"
 }
 
-/** Avanzado: sync now + a note (spec §44 › Advanced). */
+/** Avanzado: sync, database preferences and restore-defaults (spec §44 › Advanced). */
 @Composable
 fun AdvancedSettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hiltViewModel()) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
     DetailScaffold("Avanzado", onBack) {
         item {
             SettingRow(
@@ -221,13 +263,43 @@ fun AdvancedSettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hi
                 onClick = viewModel::resync,
             )
         }
+
+        item { CategoryHeading("Base de datos") }
         item {
-            InfoParagraph(
-                "Depuración, límites de transcodificación, PIN de ajustes y limpieza de caché " +
-                    "se añadirán en próximas versiones.",
+            SwitchRow(
+                title = "Media estrella",
+                subtitle = "Permite valoraciones con medias estrellas",
+                checked = state.halfStars,
+                onChange = viewModel::setHalfStars,
             )
         }
+        item {
+            SwitchRow(
+                title = "Ignorar artículos al ordenar",
+                subtitle = "Ignora El/La/Los/The al alfabetizar",
+                checked = state.ignoreArticlesOnSort,
+                onChange = viewModel::setIgnoreArticles,
+            )
+        }
+
+        item { CategoryHeading("Mantenimiento") }
+        item {
+            SettingRow(
+                title = "Restaurar valores predeterminados",
+                subtitle = "Devuelve todos los ajustes a su estado inicial",
+                onClick = viewModel::resetToDefaults,
+            )
+        }
+        item {
+            InfoParagraph("Depuración, límites de transcodificación y PIN de ajustes se añadirán en próximas versiones.")
+        }
     }
+}
+
+private fun orientationLabel(o: com.micasong.player.data.settings.ScreenOrientation): String = when (o) {
+    com.micasong.player.data.settings.ScreenOrientation.SYSTEM -> "Sistema"
+    com.micasong.player.data.settings.ScreenOrientation.PORTRAIT -> "Vertical"
+    com.micasong.player.data.settings.ScreenOrientation.LANDSCAPE -> "Horizontal"
 }
 
 /** Sync manager (spec §44 Miscelánea): trigger a full re-scan of every provider. */

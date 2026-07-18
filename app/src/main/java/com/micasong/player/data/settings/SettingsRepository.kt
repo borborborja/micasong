@@ -22,6 +22,10 @@ import javax.inject.Singleton
 @Serializable
 enum class ThemeMode { SYSTEM, LIGHT, DARK, BLACK }
 
+/** Screen-orientation preference (spec §44 › Interfaz › Advanced). */
+@Serializable
+enum class ScreenOrientation { SYSTEM, PORTRAIT, LANDSCAPE }
+
 /** A snapshot of the user-configurable preferences the UI reacts to. */
 @Serializable
 data class UserSettings(
@@ -42,6 +46,14 @@ data class UserSettings(
     val replayGainMode: com.micasong.player.data.audio.ReplayGainMode = com.micasong.player.data.audio.ReplayGainMode.OFF,
     // Custom theme (spec §25): Material-Theme-Builder JSON, null = built-in/dynamic palette.
     val customThemeJson: String? = null,
+    // Interfaz › Advanced (spec §44)
+    val keepScreenOn: Boolean = false,
+    val hideStatusBar: Boolean = false,
+    val screenOrientation: ScreenOrientation = ScreenOrientation.SYSTEM,
+    val showTrackNumber: Boolean = true,
+    // Database (spec §44)
+    val halfStars: Boolean = true,
+    val ignoreArticlesOnSort: Boolean = true,
 )
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
@@ -67,6 +79,12 @@ class SettingsRepository @Inject constructor(
         val ROLLING_CACHE_MB = intPreferencesKey("rolling_cache_mb")
         val CUSTOM_THEME = stringPreferencesKey("custom_theme_json")
         val REPLAY_GAIN = stringPreferencesKey("replay_gain_mode")
+        val KEEP_SCREEN_ON = booleanPreferencesKey("keep_screen_on")
+        val HIDE_STATUS_BAR = booleanPreferencesKey("hide_status_bar")
+        val ORIENTATION = stringPreferencesKey("screen_orientation")
+        val SHOW_TRACK_NUMBER = booleanPreferencesKey("show_track_number")
+        val HALF_STARS = booleanPreferencesKey("half_stars")
+        val IGNORE_ARTICLES = booleanPreferencesKey("ignore_articles")
     }
 
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
@@ -99,6 +117,12 @@ class SettingsRepository @Inject constructor(
             customThemeJson = p[Keys.CUSTOM_THEME],
             replayGainMode = p[Keys.REPLAY_GAIN]?.let { runCatching { com.micasong.player.data.audio.ReplayGainMode.valueOf(it) }.getOrNull() }
                 ?: com.micasong.player.data.audio.ReplayGainMode.OFF,
+            keepScreenOn = p[Keys.KEEP_SCREEN_ON] ?: false,
+            hideStatusBar = p[Keys.HIDE_STATUS_BAR] ?: false,
+            screenOrientation = p[Keys.ORIENTATION]?.let { runCatching { ScreenOrientation.valueOf(it) }.getOrNull() } ?: ScreenOrientation.SYSTEM,
+            showTrackNumber = p[Keys.SHOW_TRACK_NUMBER] ?: true,
+            halfStars = p[Keys.HALF_STARS] ?: true,
+            ignoreArticlesOnSort = p[Keys.IGNORE_ARTICLES] ?: true,
         )
     }
 
@@ -117,6 +141,18 @@ class SettingsRepository @Inject constructor(
         if (json.isNullOrBlank()) it.remove(Keys.CUSTOM_THEME) else it[Keys.CUSTOM_THEME] = json
     }
     suspend fun setReplayGainMode(mode: com.micasong.player.data.audio.ReplayGainMode) = edit { it[Keys.REPLAY_GAIN] = mode.name }
+    suspend fun setKeepScreenOn(v: Boolean) = edit { it[Keys.KEEP_SCREEN_ON] = v }
+    suspend fun setHideStatusBar(v: Boolean) = edit { it[Keys.HIDE_STATUS_BAR] = v }
+    suspend fun setScreenOrientation(o: ScreenOrientation) = edit { it[Keys.ORIENTATION] = o.name }
+    suspend fun setShowTrackNumber(v: Boolean) = edit { it[Keys.SHOW_TRACK_NUMBER] = v }
+    suspend fun setHalfStars(v: Boolean) = edit { it[Keys.HALF_STARS] = v }
+    suspend fun setIgnoreArticles(v: Boolean) = edit { it[Keys.IGNORE_ARTICLES] = v }
+
+    /** Reset every preference to its default (spec §44 "Restaurar valores predeterminados"). */
+    suspend fun resetToDefaults() {
+        applySettings(UserSettings())
+        setCustomTheme(null)
+    }
 
     /** Overwrite every preference at once, used when restoring a backup (spec §43). */
     suspend fun applySettings(s: UserSettings) = edit {
@@ -135,6 +171,12 @@ class SettingsRepository @Inject constructor(
         it[Keys.ROLLING_CACHE_MB] = s.rollingCacheMb
         if (s.customThemeJson.isNullOrBlank()) it.remove(Keys.CUSTOM_THEME) else it[Keys.CUSTOM_THEME] = s.customThemeJson
         it[Keys.REPLAY_GAIN] = s.replayGainMode.name
+        it[Keys.KEEP_SCREEN_ON] = s.keepScreenOn
+        it[Keys.HIDE_STATUS_BAR] = s.hideStatusBar
+        it[Keys.ORIENTATION] = s.screenOrientation.name
+        it[Keys.SHOW_TRACK_NUMBER] = s.showTrackNumber
+        it[Keys.HALF_STARS] = s.halfStars
+        it[Keys.IGNORE_ARTICLES] = s.ignoreArticlesOnSort
     }
 
     private suspend fun edit(block: (androidx.datastore.preferences.core.MutablePreferences) -> Unit) {
