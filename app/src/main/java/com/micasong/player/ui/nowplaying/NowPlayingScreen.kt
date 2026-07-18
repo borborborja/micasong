@@ -61,6 +61,7 @@ fun NowPlayingScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val rating by viewModel.currentRating.collectAsStateWithLifecycle()
+    val isFavorite by viewModel.currentFavorite.collectAsStateWithLifecycle()
 
     var scrubbing by remember { mutableFloatStateOf(-1f) }
 
@@ -81,7 +82,11 @@ fun NowPlayingScreen(
                 textAlign = TextAlign.Center,
             )
             IconButton(onClick = viewModel::toggleFavoriteCurrent) {
-                Icon(Icons.Filled.FavoriteBorder, contentDescription = "Favorito")
+                Icon(
+                    if (isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                    contentDescription = if (isFavorite) "Quitar de favoritos" else "Añadir a favoritos",
+                    tint = if (isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
 

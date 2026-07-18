@@ -39,6 +39,16 @@ class PlayerViewModel @Inject constructor(
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
+    /** Whether the track currently playing is a favorite, reacting to DB changes (spec §10). */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val currentFavorite: StateFlow<Boolean> = state
+        .map { it.mediaId?.removePrefix("track/")?.toLongOrNull() }
+        .distinctUntilChanged()
+        .flatMapLatest { id ->
+            if (id == null) flowOf(false) else repository.trackFlow(id).map { it?.isFavorite ?: false }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
     fun setRating(rating: Int) {
         val id = state.value.mediaId?.removePrefix("track/")?.toLongOrNull() ?: return
         viewModelScope.launch { repository.setTrackRating(id, rating.coerceIn(0, 10)) }
