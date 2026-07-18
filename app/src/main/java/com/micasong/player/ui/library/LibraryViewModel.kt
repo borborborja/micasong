@@ -36,6 +36,9 @@ class LibraryViewModel @Inject constructor(
     fun playTrackNext(track: Track) = playback.playNext(listOf(track))
     fun addTrackToQueue(track: Track) = playback.addToQueue(listOf(track))
 
+    // ---- Offline download (spec §35) ----
+    fun downloadTrack(track: Track) = viewModelScope.launch { repository.enqueueDownloads(listOf(track.id)) }
+
     // ---- Playlist management (spec §32) ----
     fun createPlaylist(name: String) {
         if (name.isNotBlank()) viewModelScope.launch { repository.createPlaylist(name.trim()) }

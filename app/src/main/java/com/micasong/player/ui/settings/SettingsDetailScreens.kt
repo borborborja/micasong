@@ -187,13 +187,6 @@ fun AndroidAutoSettingsScreen(onBack: () -> Unit) = InfoScreen(
         "biblioteca, favoritos y búsquedas por voz. Las opciones de personalización llegarán pronto.",
 )
 
-/** Manage offline files — placeholder (§44). */
-@Composable
-fun OfflineFilesScreen(onBack: () -> Unit) = InfoScreen(
-    "Administrar archivos sin conexión", onBack,
-    "La gestión de descargas guardadas (ver, actualizar y borrar) llegará en una próxima versión.",
-)
-
 /** Manage generated files — placeholder (§44). */
 @Composable
 fun GeneratedFilesScreen(onBack: () -> Unit) = InfoScreen(

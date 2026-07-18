@@ -193,6 +193,10 @@ private fun SongsTab(viewModel: LibraryViewModel, onAddToPlaylist: (Track) -> Un
                         onClick = { viewModel.addTrackToQueue(track); menuOpen = false },
                     )
                     DropdownMenuItem(
+                        text = { Text("Descargar") },
+                        onClick = { viewModel.downloadTrack(track); menuOpen = false },
+                    )
+                    DropdownMenuItem(
                         text = { Text("Añadir a lista") },
                         onClick = { onAddToPlaylist(track); menuOpen = false },
                     )
