@@ -20,7 +20,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import kotlinx.coroutines.launch
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -50,6 +52,21 @@ private fun DetailScaffold(title: String, onBack: () -> Unit, content: androidx.
 @Composable
 fun InterfazSettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    var themeMsg by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
+    val importTheme = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            val raw = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                runCatching { context.contentResolver.openInputStream(uri)?.use { it.readBytes().decodeToString() } }.getOrNull()
+            }
+            if (raw == null) { themeMsg = "No se pudo leer el archivo"; return@launch }
+            viewModel.importCustomTheme(raw) { ok -> themeMsg = if (ok) "Tema aplicado" else "JSON de tema no válido" }
+        }
+    }
     DetailScaffold("Interfaz", onBack) {
         item { CategoryHeading("Tema") }
         item { SettingRow(title = "Modo del tema", subtitle = themeLabel(state.themeMode)) }
@@ -90,6 +107,24 @@ fun InterfazSettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hi
                 checked = state.expandPlayerAutomatically,
                 onChange = viewModel::setExpandPlayer,
             )
+        }
+
+        item { CategoryHeading("Tema personalizado") }
+        item {
+            SettingRow(
+                title = "Importar tema (JSON)",
+                subtitle = themeMsg ?: if (state.customThemeJson != null) "Tema personalizado activo" else "Compatible con Material Theme Builder",
+                onClick = { importTheme.launch(arrayOf("application/json", "text/*", "*/*")) },
+            )
+        }
+        if (state.customThemeJson != null) {
+            item {
+                SettingRow(
+                    title = "Quitar tema personalizado",
+                    subtitle = "Volver a los colores dinámicos o de marca",
+                    onClick = { viewModel.clearCustomTheme(); themeMsg = null },
+                )
+            }
         }
     }
 }

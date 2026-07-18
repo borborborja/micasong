@@ -30,6 +30,19 @@ class SettingsViewModel @Inject constructor(
     fun setExpandPlayer(v: Boolean) = viewModelScope.launch { settings.setExpandPlayer(v) }
     fun resync() = viewModelScope.launch { repository.syncAll() }
 
+    // ---- Custom theme (spec §25) ----
+    /** Import a Material-Theme-Builder JSON; returns false (via callback) if it isn't a valid theme. */
+    fun importCustomTheme(rawJson: String, onResult: (Boolean) -> Unit) {
+        val theme = com.micasong.player.data.theme.ThemeJson.parse(rawJson)
+        if (theme == null) { onResult(false); return }
+        viewModelScope.launch {
+            settings.setCustomTheme(com.micasong.player.data.theme.ThemeJson.toJson(theme))
+            onResult(true)
+        }
+    }
+
+    fun clearCustomTheme() = viewModelScope.launch { settings.setCustomTheme(null) }
+
     // ---- Offline / cache (spec §35) ----
     fun setDownloadsWifiOnly(v: Boolean) = viewModelScope.launch { settings.setDownloadsWifiOnly(v) }
     fun setRollingCacheMb(mb: Int) = viewModelScope.launch { settings.setRollingCacheMb(mb) }

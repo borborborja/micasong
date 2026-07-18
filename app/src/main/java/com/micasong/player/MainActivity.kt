@@ -35,6 +35,7 @@ class MainActivity : ComponentActivity() {
             MiCaSongTheme(
                 themeMode = settings.themeMode,
                 dynamicColor = settings.dynamicColor,
+                customThemeJson = settings.customThemeJson,
             ) {
                 MiCaSongApp()
             }

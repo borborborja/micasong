@@ -39,6 +39,8 @@ data class UserSettings(
     val downloadsWifiOnly: Boolean = false,
     val autoCacheFavorites: Boolean = false,
     val rollingCacheMb: Int = 1024,
+    // Custom theme (spec §25): Material-Theme-Builder JSON, null = built-in/dynamic palette.
+    val customThemeJson: String? = null,
 )
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
@@ -62,6 +64,7 @@ class SettingsRepository @Inject constructor(
         val DOWNLOADS_WIFI_ONLY = booleanPreferencesKey("downloads_wifi_only")
         val AUTO_CACHE_FAVORITES = booleanPreferencesKey("auto_cache_favorites")
         val ROLLING_CACHE_MB = intPreferencesKey("rolling_cache_mb")
+        val CUSTOM_THEME = stringPreferencesKey("custom_theme_json")
     }
 
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
@@ -91,6 +94,7 @@ class SettingsRepository @Inject constructor(
             downloadsWifiOnly = p[Keys.DOWNLOADS_WIFI_ONLY] ?: false,
             autoCacheFavorites = p[Keys.AUTO_CACHE_FAVORITES] ?: false,
             rollingCacheMb = p[Keys.ROLLING_CACHE_MB] ?: 1024,
+            customThemeJson = p[Keys.CUSTOM_THEME],
         )
     }
 
@@ -105,6 +109,9 @@ class SettingsRepository @Inject constructor(
     suspend fun setDownloadsWifiOnly(enabled: Boolean) = edit { it[Keys.DOWNLOADS_WIFI_ONLY] = enabled }
     suspend fun setAutoCacheFavorites(enabled: Boolean) = edit { it[Keys.AUTO_CACHE_FAVORITES] = enabled }
     suspend fun setRollingCacheMb(mb: Int) = edit { it[Keys.ROLLING_CACHE_MB] = mb.coerceAtLeast(0) }
+    suspend fun setCustomTheme(json: String?) = edit {
+        if (json.isNullOrBlank()) it.remove(Keys.CUSTOM_THEME) else it[Keys.CUSTOM_THEME] = json
+    }
 
     /** Overwrite every preference at once, used when restoring a backup (spec §43). */
     suspend fun applySettings(s: UserSettings) = edit {
@@ -121,6 +128,7 @@ class SettingsRepository @Inject constructor(
         it[Keys.DOWNLOADS_WIFI_ONLY] = s.downloadsWifiOnly
         it[Keys.AUTO_CACHE_FAVORITES] = s.autoCacheFavorites
         it[Keys.ROLLING_CACHE_MB] = s.rollingCacheMb
+        if (s.customThemeJson.isNullOrBlank()) it.remove(Keys.CUSTOM_THEME) else it[Keys.CUSTOM_THEME] = s.customThemeJson
     }
 
     private suspend fun edit(block: (androidx.datastore.preferences.core.MutablePreferences) -> Unit) {
