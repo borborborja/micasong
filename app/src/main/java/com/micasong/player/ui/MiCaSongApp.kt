@@ -101,9 +101,7 @@ fun MiCaSongApp() {
             }
             composable(TopLevelDestination.SETTINGS.route) {
                 SettingsScreen(
-                    onOpenProviders = { navController.navigate(Routes.PROVIDERS) },
-                    onOpenEqualizer = { navController.navigate(Routes.EQUALIZER) },
-                    onOpenBackup = { navController.navigate(Routes.BACKUP) },
+                    onOpenCategory = { navController.navigate(it.route) },
                 )
             }
             composable(Routes.PROVIDERS) {
@@ -114,6 +112,34 @@ fun MiCaSongApp() {
             }
             composable(Routes.BACKUP) {
                 com.micasong.player.ui.settings.BackupScreen(onBack = { navController.popBackStack() })
+            }
+            // Settings detail screens (spec §44 tree).
+            composable(com.micasong.player.ui.settings.SettingsCategory.INTERFACE.route) {
+                com.micasong.player.ui.settings.InterfazSettingsScreen(onBack = { navController.popBackStack() })
+            }
+            composable(com.micasong.player.ui.settings.SettingsCategory.PLAYBACK.route) {
+                com.micasong.player.ui.settings.ReproduccionSettingsScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenEqualizer = { navController.navigate(Routes.EQUALIZER) },
+                )
+            }
+            composable(com.micasong.player.ui.settings.SettingsCategory.OFFLINE.route) {
+                com.micasong.player.ui.settings.OfflineSettingsScreen(onBack = { navController.popBackStack() })
+            }
+            composable(com.micasong.player.ui.settings.SettingsCategory.ANDROID_AUTO.route) {
+                com.micasong.player.ui.settings.AndroidAutoSettingsScreen(onBack = { navController.popBackStack() })
+            }
+            composable(com.micasong.player.ui.settings.SettingsCategory.ADVANCED.route) {
+                com.micasong.player.ui.settings.AdvancedSettingsScreen(onBack = { navController.popBackStack() })
+            }
+            composable(com.micasong.player.ui.settings.SettingsCategory.SYNC.route) {
+                com.micasong.player.ui.settings.SyncManagerScreen(onBack = { navController.popBackStack() })
+            }
+            composable(com.micasong.player.ui.settings.SettingsCategory.OFFLINE_FILES.route) {
+                com.micasong.player.ui.settings.OfflineFilesScreen(onBack = { navController.popBackStack() })
+            }
+            composable(com.micasong.player.ui.settings.SettingsCategory.GENERATED_FILES.route) {
+                com.micasong.player.ui.settings.GeneratedFilesScreen(onBack = { navController.popBackStack() })
             }
 
             composable(
