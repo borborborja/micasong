@@ -1,0 +1,6 @@
+<resources>
+    <!-- Brand seed color for MiCaSong (own identity, not the third-party mark). -->
+    <color name="brand_seed">#6B4FA0</color>
+    <color name="brand_seed_dark">#241933</color>
+    <color name="ic_launcher_background">#6B4FA0</color>
+</resources>

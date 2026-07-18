@@ -1,0 +1,37 @@
+package com.micasong.player.ui.library
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.micasong.player.data.model.Album
+import com.micasong.player.data.model.Artist
+import com.micasong.player.data.model.Genre
+import com.micasong.player.data.model.Playlist
+import com.micasong.player.data.model.Track
+import com.micasong.player.data.repository.MediaRepository
+import com.micasong.player.playback.PlaybackConnection
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+@HiltViewModel
+class LibraryViewModel @Inject constructor(
+    private val repository: MediaRepository,
+    private val playback: PlaybackConnection,
+) : ViewModel() {
+
+    val albums = repository.albums.stateIn(scope(), started(), emptyList<Album>())
+    val artists = repository.artists.stateIn(scope(), started(), emptyList<Artist>())
+    val genres = repository.genres.stateIn(scope(), started(), emptyList<Genre>())
+    val tracks = repository.allTracks.stateIn(scope(), started(), emptyList<Track>())
+    val playlists = repository.playlists.stateIn(scope(), started(), emptyList<Playlist>())
+
+    fun playAllTracks(startIndex: Int) {
+        val list = tracks.value
+        if (list.isNotEmpty()) playback.playTracks(list, startIndex)
+    }
+
+    private fun scope() = viewModelScope
+    private fun started() = SharingStarted.WhileSubscribed(5000)
+}

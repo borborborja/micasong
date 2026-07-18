@@ -1,0 +1,20 @@
+*.iml
+.gradle/
+.kotlin/
+.claude/
+/local.properties
+/.idea/
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+app/build/
+build/
+*.apk
+*.keystore
+!debug.keystore
+
+# Third-party reference material (copyrighted Symfonium screenshots + spec) — NOT for the public repo.
+/instruccions/
+

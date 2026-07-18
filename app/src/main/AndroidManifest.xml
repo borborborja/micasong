@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Media access: Android 13+ uses READ_MEDIA_AUDIO; older uses READ_EXTERNAL_STORAGE. -->
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+
+    <application
+        android:name=".MiCaSongApp"
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:enableOnBackInvokedCallback="true"
+        android:theme="@style/Theme.MiCaSong"
+        tools:targetApi="34">
+
+        <!-- Declares support for Android Auto media browsing. -->
+        <meta-data
+            android:name="com.google.android.gms.car.application"
+            android:resource="@xml/automotive_app_desc" />
+        <meta-data
+            android:name="com.google.android.gms.car.notification.SmallIcon"
+            android:resource="@drawable/ic_notification" />
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:theme="@style/Theme.MiCaSong.Starting"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Playback service: MediaLibraryService powers the phone UI, the media
+             notification, and the Android Auto / Wear OS browse tree. -->
+        <service
+            android:name=".playback.PlaybackService"
+            android:exported="true"
+            android:foregroundServiceType="mediaPlayback">
+            <intent-filter>
+                <action android:name="androidx.media3.session.MediaLibraryService" />
+                <action android:name="android.media.browse.MediaBrowserService" />
+            </intent-filter>
+            <!-- Voice search from Android Auto / Assistant (spec §38). -->
+            <intent-filter>
+                <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" />
+            </intent-filter>
+        </service>
+
+        <!-- Broadcast API (Tasker, scrobblers, automation) — mirrors the spec's intents. -->
+        <receiver
+            android:name=".api.ApiReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.micasong.api.SELECT_RENDERER" />
+                <action android:name="com.micasong.api.MEDIA_SYNC" />
+                <action android:name="com.micasong.api.MEDIA_COMMAND" />
+                <action android:name="com.micasong.api.MEDIA_START" />
+                <action android:name="com.micasong.api.CHANGE_SETTINGS" />
+                <action android:name="com.micasong.api.PLAYLIST_IMPORT" />
+                <action android:name="com.micasong.api.CUSTOM_ACTION" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>

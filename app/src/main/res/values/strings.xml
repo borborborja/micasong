@@ -1,0 +1,58 @@
+<resources>
+    <!-- app_name is provided per product flavor (foss / full) via resValue in build.gradle.kts. -->
+
+    <!-- Bottom navigation -->
+    <string name="nav_home">Inicio</string>
+    <string name="nav_library">Biblioteca</string>
+    <string name="nav_search">Buscar</string>
+    <string name="nav_settings">Ajustes</string>
+
+    <!-- Home shortcuts -->
+    <string name="shortcut_track_mix">Mix de pistas</string>
+    <string name="shortcut_album_mix">Mix de álbumes</string>
+    <string name="shortcut_decade_mix">Mix de la década</string>
+    <string name="shortcut_queues">Colas</string>
+    <string name="home_favorite_albums">Álbumes favoritos</string>
+    <string name="home_favorite_tracks">Pistas favoritas</string>
+    <string name="home_recently_added">Añadidos recientemente</string>
+    <string name="home_most_played">Más reproducidos</string>
+    <string name="home_recently_played">Últimos reproducidos</string>
+
+    <!-- Library nodes -->
+    <string name="node_albums">Álbumes</string>
+    <string name="node_artists">Artistas</string>
+    <string name="node_songs">Pistas</string>
+    <string name="node_genres">Géneros</string>
+    <string name="node_playlists">Listas de reproducción</string>
+    <string name="node_favorites">Favoritos</string>
+
+    <!-- Playback / notification -->
+    <string name="playback_channel_name">Reproducción</string>
+    <string name="playback_channel_desc">Controles de reproducción de música</string>
+
+    <!-- Actions -->
+    <string name="action_play">Reproducir</string>
+    <string name="action_shuffle">Aleatorio</string>
+    <string name="action_pause">Pausar</string>
+    <string name="action_next">Siguiente</string>
+    <string name="action_previous">Anterior</string>
+    <string name="action_favorite">Favorito</string>
+    <string name="action_add_to_queue">Añadir a la cola</string>
+    <string name="action_more">Más</string>
+
+    <!-- Search -->
+    <string name="search_hint">Buscar en tu biblioteca…</string>
+
+    <!-- Empty states -->
+    <string name="empty_library_title">Tu biblioteca está vacía</string>
+    <string name="empty_library_message">Concede permiso de acceso al audio y sincroniza para escanear la música de tu dispositivo.</string>
+    <string name="action_grant_permission">Conceder permiso</string>
+    <string name="action_sync">Sincronizar</string>
+    <string name="syncing">Sincronizando…</string>
+
+    <!-- Android Auto browse -->
+    <string name="auto_tab_home">Inicio</string>
+    <string name="auto_tab_recent">Recientes</string>
+    <string name="auto_tab_library">Biblioteca</string>
+    <string name="auto_tab_favorites">Favoritos</string>
+</resources>
