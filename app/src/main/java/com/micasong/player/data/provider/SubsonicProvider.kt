@@ -80,29 +80,49 @@ class SubsonicProvider(
                     }
                 }
 
-                onProgress(0.4f, "Recopilando álbumes")
-                val albumsJson = getJson(
-                    endpoint("getAlbumList2", mapOf("type" to "alphabeticalByName", "size" to "500"))
-                )
-                val albumArr = albumsJson
-                    ?.optJSONObject("subsonic-response")
-                    ?.optJSONObject("albumList2")
-                    ?.optJSONArray("album")
-                if (albumArr != null) {
-                    for (i in 0 until albumArr.length()) {
-                        val al = albumArr.getJSONObject(i)
-                        albums += AlbumEntity(
-                            id = al.getString("id").stableId(),
-                            name = al.optString("name", "?"),
-                            nameSort = al.optString("name").lowercase(),
-                            albumArtist = al.optString("artist").ifBlank { null },
-                            artistId = al.optString("artistId").ifBlank { null }?.stableId(),
-                            year = al.optInt("year").takeIf { it > 0 },
-                            trackCount = al.optInt("songCount"),
-                            durationMs = al.optLong("duration") * 1000,
-                            artworkUri = coverArtUri(al.optString("coverArt")),
-                        )
-                        onProgress(0.4f + 0.5f * i / albumArr.length(), "Recopilando pistas")
+                onProgress(0.3f, "Recopilando álbumes")
+                // getAlbumList2 is paginated (max 500 per page) — walk every page.
+                val rawAlbums = ArrayList<JSONObject>()
+                var offset = 0
+                val pageSize = 500
+                while (true) {
+                    val page = getJson(
+                        endpoint("getAlbumList2", mapOf("type" to "alphabeticalByName", "size" to "$pageSize", "offset" to "$offset"))
+                    )?.optJSONObject("subsonic-response")?.optJSONObject("albumList2")?.optJSONArray("album")
+                    if (page == null || page.length() == 0) break
+                    for (i in 0 until page.length()) rawAlbums += page.getJSONObject(i)
+                    if (page.length() < pageSize) break
+                    offset += pageSize
+                }
+
+                // For each album: map the album AND fetch its songs (the actual playable tracks).
+                for ((index, al) in rawAlbums.withIndex()) {
+                    val rawAlbumId = al.optString("id")
+                    albums += AlbumEntity(
+                        id = SubsonicMappers.stableId(rawAlbumId),
+                        name = al.optString("name", "?"),
+                        nameSort = al.optString("name").lowercase(),
+                        albumArtist = al.optString("artist").ifBlank { null },
+                        artistId = al.optString("artistId").ifBlank { null }?.let { SubsonicMappers.stableId(it) },
+                        year = al.optInt("year").takeIf { it > 0 },
+                        trackCount = al.optInt("songCount"),
+                        durationMs = al.optLong("duration") * 1000,
+                        artworkUri = coverArtUri(al.optString("coverArt")),
+                    )
+
+                    val songArr = getJson(endpoint("getAlbum", mapOf("id" to rawAlbumId)))
+                        ?.optJSONObject("subsonic-response")?.optJSONObject("album")?.optJSONArray("song")
+                    if (songArr != null) {
+                        for (s in 0 until songArr.length()) {
+                            val song = songArr.getJSONObject(s)
+                            val streamUrl = endpoint("stream", mapOf("id" to song.optString("id")))
+                            val coverUrl = coverArtUri(song.optString("coverArt"))
+                            tracks += SubsonicMappers.parseSong(song, config.id, streamUrl, coverUrl)
+                            song.optString("genre").ifBlank { null }?.let { genres[it] = (genres[it] ?: 0) + 1 }
+                        }
+                    }
+                    if (rawAlbums.isNotEmpty()) {
+                        onProgress(0.3f + 0.6f * (index + 1) / rawAlbums.size, "Recopilando pistas")
                     }
                 }
                 onProgress(1f, "Completado")
@@ -113,16 +133,8 @@ class SubsonicProvider(
             ProviderSnapshot(tracks, albums, artists, genreEntities)
         }
 
-    override suspend fun streamUri(track: TrackEntity, maxBitrate: Int): String {
-        val params = buildMap {
-            put("id", track.mediaUri)   // Subsonic tracks store the server id in mediaUri
-            if (maxBitrate > 0) {
-                put("maxBitRate", (maxBitrate / 1000).toString())
-                if (config.type == ProviderType.SUBSONIC) put("format", "opus")
-            }
-        }
-        return endpoint("stream", params)
-    }
+    // Tracks already carry a ready-to-play, authenticated stream URL in mediaUri (built at sync).
+    override suspend fun streamUri(track: TrackEntity, maxBitrate: Int): String = track.mediaUri
 
     fun coverArtUri(coverArtId: String?): String? =
         coverArtId?.takeIf { it.isNotBlank() }?.let { endpoint("getCoverArt", mapOf("id" to it, "size" to "512")) }

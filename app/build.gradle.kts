@@ -15,8 +15,8 @@ android {
         applicationId = "com.micasong.player"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.0.1"
+        versionCode = 2
+        versionName = "0.0.2"
         vectorDrawables { useSupportLibrary = true }
     }
 
@@ -124,6 +124,8 @@ dependencies {
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
+    // Real org.json for unit tests (the android.jar version is a throwing stub).
+    testImplementation("org.json:json:20240303")
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.collections.immutable)
 }
