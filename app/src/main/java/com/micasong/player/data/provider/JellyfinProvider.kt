@@ -113,4 +113,43 @@ class JellyfinProvider(
     }
 
     private fun String.stableId(): Long = abs(hashCode().toLong()) or 1L
+
+    /** The result of a successful Jellyfin login. */
+    data class JellyfinSession(val token: String, val userId: String)
+
+    companion object {
+        /**
+         * Authenticate against Jellyfin (`POST /Users/AuthenticateByName`) to exchange a username +
+         * password for an access token and the user's id — both are needed for every later request.
+         * Returns null on failure. Called from the onboarding flow.
+         */
+        suspend fun authenticate(
+            baseUrl: String,
+            username: String,
+            password: String,
+            deviceId: String = "micasong-device",
+        ): JellyfinSession? = withContext(Dispatchers.IO) {
+            try {
+                val url = JellyfinAuth.endpointUrl(baseUrl, "/Users/AuthenticateByName")
+                val conn = (URL(url).openConnection() as HttpURLConnection).apply {
+                    requestMethod = "POST"
+                    doOutput = true
+                    connectTimeout = 8000
+                    readTimeout = 15000
+                    setRequestProperty("Content-Type", "application/json")
+                    setRequestProperty("Authorization", JellyfinAuth.authorizationHeader(deviceId))
+                }
+                val body = JSONObject().put("Username", username).put("Pw", password).toString()
+                conn.outputStream.use { it.write(body.toByteArray()) }
+                val response = conn.inputStream.bufferedReader().use { JSONObject(it.readText()) }
+                val token = response.optString("AccessToken").ifBlank { return@withContext null }
+                val userId = response.optJSONObject("User")?.optString("Id")?.ifBlank { null }
+                    ?: return@withContext null
+                JellyfinSession(token, userId)
+            } catch (e: Exception) {
+                Log.w("JellyfinProvider", "authenticate failed: ${e.message}")
+                null
+            }
+        }
+    }
 }

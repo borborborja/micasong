@@ -2,6 +2,7 @@ package com.micasong.player.data.provider
 
 import android.content.ContentUris
 import android.content.Context
+import android.os.Build
 import android.provider.MediaStore
 import com.micasong.player.data.db.AlbumEntity
 import com.micasong.player.data.db.ArtistEntity
@@ -49,23 +50,32 @@ class LocalProvider(
             val artistAlbums = HashMap<Long, MutableSet<Long>>()
 
             val collection = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
-            val projection = arrayOf(
+            // ALBUM_ARTIST, GENRE and BITRATE columns only exist from Android 11 (API 30). Including
+            // them in the projection on older devices makes the whole query throw, so add them
+            // conditionally — the reads below already tolerate their absence.
+            val baseProjection = arrayOf(
                 MediaStore.Audio.Media._ID,
                 MediaStore.Audio.Media.TITLE,
                 MediaStore.Audio.Media.ALBUM,
                 MediaStore.Audio.Media.ALBUM_ID,
                 MediaStore.Audio.Media.ARTIST,
                 MediaStore.Audio.Media.ARTIST_ID,
-                MediaStore.Audio.Media.ALBUM_ARTIST,
                 MediaStore.Audio.Media.TRACK,
                 MediaStore.Audio.Media.DURATION,
                 MediaStore.Audio.Media.YEAR,
                 MediaStore.Audio.Media.MIME_TYPE,
                 MediaStore.Audio.Media.SIZE,
                 MediaStore.Audio.Media.DATE_ADDED,
-                MediaStore.Audio.Media.GENRE,
-                MediaStore.Audio.Media.BITRATE,
             )
+            val projection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                baseProjection + arrayOf(
+                    MediaStore.Audio.Media.ALBUM_ARTIST,
+                    MediaStore.Audio.Media.GENRE,
+                    MediaStore.Audio.Media.BITRATE,
+                )
+            } else {
+                baseProjection
+            }
             val selection = "${MediaStore.Audio.Media.IS_MUSIC} != 0"
             val sortOrder = "${MediaStore.Audio.Media.TITLE_KEY} ASC"
 

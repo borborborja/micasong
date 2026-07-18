@@ -46,6 +46,8 @@ fun ProvidersScreen(
     viewModel: ProvidersViewModel = hiltViewModel(),
 ) {
     val providers by viewModel.providers.collectAsStateWithLifecycle()
+    val busy by viewModel.busy.collectAsStateWithLifecycle()
+    val error by viewModel.error.collectAsStateWithLifecycle()
     var showAdd by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -66,6 +68,28 @@ fun ProvidersScreen(
         },
     ) { padding ->
         LazyColumn(Modifier.padding(padding), contentPadding = PaddingValues(vertical = 8.dp)) {
+            if (busy) {
+                item {
+                    androidx.compose.material3.LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = 16.dp))
+                    Text(
+                        "Conectando y sincronizando…",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                    )
+                }
+            }
+            error?.let { message ->
+                item {
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(message, Modifier.weight(1f), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
+                        androidx.compose.material3.TextButton(onClick = { viewModel.clearError() }) { Text("OK") }
+                    }
+                }
+            }
             item {
                 Row(
                     Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
