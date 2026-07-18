@@ -35,6 +35,10 @@ data class UserSettings(
     val expandPlayerAutomatically: Boolean = false,
     val minPlayedPercentToScrobble: Int = 95,
     val personalMixSize: Int = 200,
+    // Offline / cache (spec §35)
+    val downloadsWifiOnly: Boolean = false,
+    val autoCacheFavorites: Boolean = false,
+    val rollingCacheMb: Int = 1024,
 )
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
@@ -55,6 +59,9 @@ class SettingsRepository @Inject constructor(
         val MIN_PLAYED_PCT = intPreferencesKey("min_played_pct")
         val MIX_SIZE = intPreferencesKey("mix_size")
         val EQ_PROFILE = stringPreferencesKey("eq_profile")
+        val DOWNLOADS_WIFI_ONLY = booleanPreferencesKey("downloads_wifi_only")
+        val AUTO_CACHE_FAVORITES = booleanPreferencesKey("auto_cache_favorites")
+        val ROLLING_CACHE_MB = intPreferencesKey("rolling_cache_mb")
     }
 
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
@@ -81,6 +88,9 @@ class SettingsRepository @Inject constructor(
             expandPlayerAutomatically = p[Keys.EXPAND_PLAYER] ?: false,
             minPlayedPercentToScrobble = p[Keys.MIN_PLAYED_PCT] ?: 95,
             personalMixSize = p[Keys.MIX_SIZE] ?: 200,
+            downloadsWifiOnly = p[Keys.DOWNLOADS_WIFI_ONLY] ?: false,
+            autoCacheFavorites = p[Keys.AUTO_CACHE_FAVORITES] ?: false,
+            rollingCacheMb = p[Keys.ROLLING_CACHE_MB] ?: 1024,
         )
     }
 
@@ -92,6 +102,9 @@ class SettingsRepository @Inject constructor(
     suspend fun setWeightedShuffle(enabled: Boolean) = edit { it[Keys.WEIGHTED_SHUFFLE] = enabled }
     suspend fun setCrossfade(ms: Int) = edit { it[Keys.CROSSFADE] = ms }
     suspend fun setExpandPlayer(enabled: Boolean) = edit { it[Keys.EXPAND_PLAYER] = enabled }
+    suspend fun setDownloadsWifiOnly(enabled: Boolean) = edit { it[Keys.DOWNLOADS_WIFI_ONLY] = enabled }
+    suspend fun setAutoCacheFavorites(enabled: Boolean) = edit { it[Keys.AUTO_CACHE_FAVORITES] = enabled }
+    suspend fun setRollingCacheMb(mb: Int) = edit { it[Keys.ROLLING_CACHE_MB] = mb.coerceAtLeast(0) }
 
     /** Overwrite every preference at once, used when restoring a backup (spec §43). */
     suspend fun applySettings(s: UserSettings) = edit {
@@ -105,6 +118,9 @@ class SettingsRepository @Inject constructor(
         it[Keys.EXPAND_PLAYER] = s.expandPlayerAutomatically
         it[Keys.MIN_PLAYED_PCT] = s.minPlayedPercentToScrobble
         it[Keys.MIX_SIZE] = s.personalMixSize
+        it[Keys.DOWNLOADS_WIFI_ONLY] = s.downloadsWifiOnly
+        it[Keys.AUTO_CACHE_FAVORITES] = s.autoCacheFavorites
+        it[Keys.ROLLING_CACHE_MB] = s.rollingCacheMb
     }
 
     private suspend fun edit(block: (androidx.datastore.preferences.core.MutablePreferences) -> Unit) {

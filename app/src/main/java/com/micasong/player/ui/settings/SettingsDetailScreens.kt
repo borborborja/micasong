@@ -171,13 +171,66 @@ fun SyncManagerScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hiltVie
     }
 }
 
-/** Sin conexión, caché y descarga — placeholder until the download settings are wired (§44). */
+/** Sin conexión, caché y descarga (spec §35): real download/cache controls. */
 @Composable
-fun OfflineSettingsScreen(onBack: () -> Unit) = InfoScreen(
-    "Sin conexión, caché y descarga", onBack,
-    "Aquí podrás elegir la calidad de descarga, el tamaño de la caché y el modo sin conexión. " +
-        "El motor de descargas ya existe; los ajustes llegarán en una próxima versión.",
-)
+fun OfflineSettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = hiltViewModel()) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    DetailScaffold("Sin conexión, caché y descarga", onBack) {
+        item { CategoryHeading("Descargas") }
+        item {
+            SwitchRow(
+                title = "Descargas solo por Wi-Fi",
+                subtitle = "No descargar con datos móviles",
+                checked = state.downloadsWifiOnly,
+                onChange = viewModel::setDownloadsWifiOnly,
+            )
+        }
+        item {
+            SwitchRow(
+                title = "Guardar favoritos sin conexión",
+                subtitle = "Descarga automáticamente las pistas marcadas como favoritas",
+                checked = state.autoCacheFavorites,
+                onChange = viewModel::setAutoCacheFavorites,
+            )
+        }
+        item {
+            SettingRow(
+                title = "Actualizar caché automática",
+                subtitle = "Vuelve a aplicar las reglas de descarga automática",
+                onClick = viewModel::refreshAutoCache,
+            )
+        }
+
+        item { CategoryHeading("Caché rotativa") }
+        item {
+            SettingRow(
+                title = "Tamaño de la caché rotativa",
+                subtitle = "${state.rollingCacheMb} MB",
+            )
+        }
+        item {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                listOf(512, 1024, 2048, 4096).forEach { mb ->
+                    FilterChip(
+                        selected = state.rollingCacheMb == mb,
+                        onClick = { viewModel.setRollingCacheMb(mb) },
+                        label = { Text(if (mb >= 1024) "${mb / 1024} GB" else "$mb MB") },
+                    )
+                }
+            }
+        }
+        item {
+            SettingRow(
+                title = "Liberar espacio",
+                subtitle = "Elimina las descargas rotativas más antiguas por encima del límite",
+                onClick = viewModel::freeRollingCache,
+            )
+        }
+    }
+}
 
 /** Android Auto — informational (§44). */
 @Composable

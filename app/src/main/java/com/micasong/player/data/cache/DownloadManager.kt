@@ -1,12 +1,15 @@
 package com.micasong.player.data.cache
 
 import android.content.Context
+import android.net.ConnectivityManager
 import com.micasong.player.data.db.DownloadDao
 import com.micasong.player.data.db.MusicDao
+import com.micasong.player.data.settings.SettingsRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -30,9 +33,10 @@ fun interface DownloadTrigger {
  */
 @Singleton
 class DownloadManager @Inject constructor(
-    @param:ApplicationContext context: Context,
+    @param:ApplicationContext private val context: Context,
     private val downloadDao: DownloadDao,
     private val musicDao: MusicDao,
+    private val settings: SettingsRepository,
 ) : DownloadTrigger {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val client = OkHttpClient()
@@ -45,6 +49,7 @@ class DownloadManager @Inject constructor(
         scope.launch {
             try {
                 while (true) {
+                    if (!canDownloadNow()) break // Wi-Fi-only on a metered network: wait
                     val next = nextQueuedTrackId() ?: break
                     downloadOne(next)
                 }
@@ -52,6 +57,13 @@ class DownloadManager @Inject constructor(
                 running.set(false)
             }
         }
+    }
+
+    /** Honour "downloads only on Wi-Fi" (spec §35): pause when the network is metered. */
+    private suspend fun canDownloadNow(): Boolean {
+        if (!settings.settings.first().downloadsWifiOnly) return true
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+        return cm?.isActiveNetworkMetered != true
     }
 
     private suspend fun nextQueuedTrackId(): Long? {
