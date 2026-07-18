@@ -24,6 +24,10 @@ import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
+import androidx.compose.material.icons.filled.StarHalf
+import androidx.compose.foundation.clickable
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -56,6 +60,7 @@ fun NowPlayingScreen(
     viewModel: PlayerViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val rating by viewModel.currentRating.collectAsStateWithLifecycle()
 
     var scrubbing by remember { mutableFloatStateOf(-1f) }
 
@@ -159,6 +164,38 @@ fun NowPlayingScreen(
 
         Spacer(Modifier.height(16.dp))
         SpeedSelector(current = state.speed, onSelect = viewModel::setSpeed)
+
+        if (state.hasItem) {
+            Spacer(Modifier.height(16.dp))
+            RatingBar(rating = rating, onRate = viewModel::setRating)
+        }
+    }
+}
+
+/**
+ * Five-star rating control on a 0–10 scale (half-star granularity, spec §11). Tapping a star sets
+ * its whole-star value; tapping the star that already matches the rating clears it.
+ */
+@Composable
+private fun RatingBar(rating: Int, onRate: (Int) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        (1..5).forEach { star ->
+            val value = star * 2
+            val icon = when {
+                rating >= value -> Icons.Filled.Star
+                rating == value - 1 -> Icons.Filled.StarHalf
+                else -> Icons.Filled.StarBorder
+            }
+            Icon(
+                icon,
+                contentDescription = "Valorar con $star estrella${if (star > 1) "s" else ""}",
+                tint = if (rating >= value - 1) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .size(36.dp)
+                    .clickable { onRate(if (rating == value) 0 else value) },
+            )
+        }
     }
 }
 

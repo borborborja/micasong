@@ -88,6 +88,18 @@ class DatabaseRuntimeTest {
     }
 
     @Test
+    fun `rating persists and the track flow reflects the change`() = runBlocking {
+        dao.upsertTracks(listOf(track(1, "Song", 1)))
+        assertEquals(0, dao.trackByIdFlow(1).first()!!.userRating)
+
+        dao.setTrackRating(1, 8)
+        assertEquals(8, dao.trackByIdFlow(1).first()!!.userRating)
+
+        dao.setTrackRating(1, 0)
+        assertEquals(0, dao.trackByIdFlow(1).first()!!.userRating)
+    }
+
+    @Test
     fun `replace local library clears then repopulates`() = runBlocking {
         dao.upsertTracks(listOf(track(1, "Old", 1)))
         dao.replaceLocalLibrary(

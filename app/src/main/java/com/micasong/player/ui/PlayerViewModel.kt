@@ -6,6 +6,14 @@ import com.micasong.player.data.model.Track
 import com.micasong.player.data.repository.MediaRepository
 import com.micasong.player.playback.PlaybackConnection
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -20,6 +28,21 @@ class PlayerViewModel @Inject constructor(
 ) : ViewModel() {
 
     val state = playback.state
+
+    /** 0–10 rating of the track currently playing, reacting to DB changes (spec §11). */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val currentRating: StateFlow<Int> = state
+        .map { it.mediaId?.removePrefix("track/")?.toLongOrNull() }
+        .distinctUntilChanged()
+        .flatMapLatest { id ->
+            if (id == null) flowOf(0) else repository.trackFlow(id).map { it?.userRating ?: 0 }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+
+    fun setRating(rating: Int) {
+        val id = state.value.mediaId?.removePrefix("track/")?.toLongOrNull() ?: return
+        viewModelScope.launch { repository.setTrackRating(id, rating.coerceIn(0, 10)) }
+    }
 
     fun togglePlayPause() = playback.togglePlayPause()
     fun next() = playback.next()

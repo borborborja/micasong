@@ -185,6 +185,7 @@ class MediaRepository @Inject constructor(
     suspend fun setResumePosition(id: Long, pos: Long) = musicDao.setResumePosition(id, pos)
 
     suspend fun trackById(id: Long): Track? = musicDao.trackById(id)?.toDomain()
+    fun trackFlow(id: Long): Flow<Track?> = musicDao.trackByIdFlow(id).map { it?.toDomain() }
     suspend fun tracksByIds(ids: List<Long>): List<Track> = musicDao.tracksByIds(ids).map { it.toDomain() }
 
     // ---- Sync ----

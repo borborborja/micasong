@@ -85,6 +85,9 @@ interface MusicDao {
     @Query("SELECT * FROM tracks WHERE id = :id")
     suspend fun trackById(id: Long): TrackEntity?
 
+    @Query("SELECT * FROM tracks WHERE id = :id")
+    fun trackByIdFlow(id: Long): Flow<TrackEntity?>
+
     @Query("SELECT * FROM tracks WHERE id IN (:ids)")
     suspend fun tracksByIds(ids: List<Long>): List<TrackEntity>
 
