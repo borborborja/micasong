@@ -126,6 +126,10 @@ dependencies {
 
     // Proprietary components live only in the "full" flavor; the "foss" flavor stays F-Droid clean.
     "fullImplementation"("com.google.android.gms:play-services-cast-framework:21.5.0")
+    // Media3's CastPlayer + the Cast route button (MediaRouteButton). Both pull in Google Cast, so
+    // they must stay out of the FOSS build.
+    "fullImplementation"(libs.androidx.media3.cast)
+    "fullImplementation"(libs.androidx.mediarouter)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

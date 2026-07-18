@@ -43,6 +43,7 @@ class PlaybackService : MediaLibraryService() {
     @Inject lateinit var mediaTree: MediaTree
     @Inject lateinit var repository: MediaRepository
     @Inject lateinit var settings: SettingsRepository
+    @Inject lateinit var castSessionManager: CastSessionManager
 
     private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private lateinit var player: ExoPlayer
@@ -74,6 +75,10 @@ class PlaybackService : MediaLibraryService() {
             .setSessionActivity(sessionActivity)
             .build()
 
+        // Hand the session to the Cast bridge so Chromecast can take over playback (spec §36). This
+        // is a real swap in the "full" flavor and a no-op in "foss".
+        castSessionManager.attach(this, session, player)
+
         player.addListener(PlaybackStatsListener(repository, serviceScope) { player })
 
         // Attach the equalizer chain to the audio session for local playback (spec §14), and
@@ -104,6 +109,7 @@ class PlaybackService : MediaLibraryService() {
     }
 
     override fun onDestroy() {
+        castSessionManager.release()
         audioEffects.release()
         session.release()
         player.release()

@@ -62,6 +62,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Player
+import com.micasong.player.ui.CastButton
 import com.micasong.player.ui.PlayerViewModel
 import com.micasong.player.ui.components.MediaArtwork
 import com.micasong.player.ui.components.formatDuration
@@ -98,6 +99,7 @@ fun NowPlayingScreen(
                 modifier = Modifier.weight(1f),
                 textAlign = TextAlign.Center,
             )
+            CastButton()
             IconButton(onClick = { showQueue = true }) {
                 Icon(Icons.Filled.QueueMusic, contentDescription = "Cola de reproducción")
             }
