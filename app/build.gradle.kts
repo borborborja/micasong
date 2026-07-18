@@ -76,6 +76,11 @@ android {
         compose = true
         buildConfig = true
     }
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+        }
+    }
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -126,6 +131,11 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     // Real org.json for unit tests (the android.jar version is a throwing stub).
     testImplementation("org.json:json:20240303")
+    // Robolectric runs real Android components (Room, ContentResolver/MediaStore) on the JVM,
+    // giving runtime verification of the data layer without an emulator.
+    testImplementation("org.robolectric:robolectric:4.14.1")
+    testImplementation("androidx.test:core-ktx:1.6.1")
+    testImplementation(libs.androidx.room.ktx)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.collections.immutable)
 }
