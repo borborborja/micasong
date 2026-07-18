@@ -1,6 +1,13 @@
 package com.micasong.player.data.repository
 
 import android.content.Context
+import com.micasong.player.data.cache.AutoCacheEngine
+import com.micasong.player.data.cache.AutoCacheRules
+import com.micasong.player.data.cache.CacheTier
+import com.micasong.player.data.cache.DownloadState
+import com.micasong.player.data.cache.RollingCache
+import com.micasong.player.data.db.DownloadDao
+import com.micasong.player.data.db.DownloadEntity
 import com.micasong.player.data.db.MusicDao
 import com.micasong.player.data.db.PlaylistDao
 import com.micasong.player.data.db.ProviderDao
@@ -49,6 +56,7 @@ class MediaRepository @Inject constructor(
     private val musicDao: MusicDao,
     private val playlistDao: PlaylistDao,
     private val providerDao: ProviderDao,
+    private val downloadDao: DownloadDao,
 ) {
     // The local device provider is always present; server providers (Subsonic/Jellyfin/…) are
     // loaded from the database so they survive restarts (spec §4).
@@ -223,6 +231,61 @@ class MediaRepository @Inject constructor(
     suspend fun smartFlowInsertions(current: Track, mode: SmartFlowMode, maxInsertions: Int = SmartFlow.DEFAULT_MAX_INSERTIONS): List<Track> {
         val library = musicDao.allTracks().first().map { it.toDomain() }
         return SmartFlow.nextInsertions(current, library, mode, maxInsertions)
+    }
+
+    // ---- Offline downloads & cache (spec §34-35) ----
+    /** All download/cache rows, for the offline-files UI. */
+    val downloads: Flow<List<DownloadEntity>> = downloadDao.all()
+
+    /** Queue tracks for offline download (skipping ones already queued/downloaded). */
+    suspend fun enqueueDownloads(trackIds: List<Long>, tier: CacheTier = CacheTier.ROLLING, auto: Boolean = false) {
+        var stamp = System.currentTimeMillis()
+        for (id in trackIds) {
+            if (downloadDao.byTrack(id) != null) continue
+            val providerId = musicDao.trackById(id)?.providerId ?: continue
+            downloadDao.upsert(
+                DownloadEntity(
+                    trackId = id,
+                    providerId = providerId,
+                    state = DownloadState.QUEUED.ordinal,
+                    tier = tier.ordinal,
+                    enqueuedAt = stamp++,
+                    auto = auto,
+                )
+            )
+        }
+    }
+
+    suspend fun removeDownload(trackId: Long) {
+        downloadDao.byTrack(trackId)?.localPath?.let { runCatching { java.io.File(it).delete() } }
+        downloadDao.delete(trackId)
+    }
+
+    suspend fun retryDownload(trackId: Long) =
+        downloadDao.updateState(trackId, DownloadState.QUEUED.ordinal, 0f)
+
+    suspend fun setDownloadTier(trackId: Long, tier: CacheTier) = downloadDao.setTier(trackId, tier.ordinal)
+
+    /** The local file path if a track has been fully downloaded, else null (used at playback). */
+    suspend fun downloadedPath(trackId: Long): String? = downloadDao.completedPath(trackId)
+
+    /** Reconcile automatic-cache rules against the library (spec §34); returns tracks newly queued. */
+    suspend fun runAutoCacheReconcile(rules: AutoCacheRules): Int {
+        if (rules.isEmpty) return 0
+        val library = musicDao.allTracks().first().map { it.toDomain() }
+        val autoCached = downloadDao.autoCachedIds().toSet()
+        val plan = AutoCacheEngine.reconcile(library, rules, autoCached)
+        plan.toRemove.forEach { removeDownload(it) }
+        enqueueDownloads(plan.toAdd.toList(), tier = CacheTier.ROLLING, auto = true)
+        return plan.toAdd.size
+    }
+
+    /** Evict least-recently-used rolling downloads exceeding [maxBytes] (spec §34). */
+    suspend fun evictRollingCache(maxBytes: Long) {
+        val items = downloadDao.snapshot().map {
+            com.micasong.player.data.cache.CachedTrack(it.trackId, CacheTier.entries[it.tier], it.sizeBytes, it.lastAccess, it.auto)
+        }
+        RollingCache.evictionPlan(items, maxBytes).forEach { removeDownload(it) }
     }
 
     // ---- User state (spec §10) ----

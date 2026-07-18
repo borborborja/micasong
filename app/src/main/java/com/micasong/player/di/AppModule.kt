@@ -2,6 +2,7 @@ package com.micasong.player.di
 
 import android.content.Context
 import androidx.room.Room
+import com.micasong.player.data.db.DownloadDao
 import com.micasong.player.data.db.MiCaSongDatabase
 import com.micasong.player.data.db.MusicDao
 import com.micasong.player.data.db.PlaylistDao
@@ -32,4 +33,7 @@ object AppModule {
 
     @Provides
     fun provideProviderDao(db: MiCaSongDatabase): ProviderDao = db.providerDao()
+
+    @Provides
+    fun provideDownloadDao(db: MiCaSongDatabase): DownloadDao = db.downloadDao()
 }

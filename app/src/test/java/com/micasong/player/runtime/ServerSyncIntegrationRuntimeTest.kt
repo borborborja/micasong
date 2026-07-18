@@ -38,7 +38,7 @@ class ServerSyncIntegrationRuntimeTest {
     fun setup() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         db = Room.inMemoryDatabaseBuilder(context, MiCaSongDatabase::class.java).allowMainThreadQueries().build()
-        repository = MediaRepository(context, db.musicDao(), db.playlistDao(), db.providerDao())
+        repository = MediaRepository(context, db.musicDao(), db.playlistDao(), db.providerDao(), db.downloadDao())
 
         server = MockWebServer()
         server.dispatcher = object : Dispatcher() {

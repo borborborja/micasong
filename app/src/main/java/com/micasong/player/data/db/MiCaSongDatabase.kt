@@ -12,14 +12,16 @@ import androidx.room.RoomDatabase
         PlaylistEntity::class,
         PlaylistTrackCrossRef::class,
         ProviderConfigEntity::class,
+        DownloadEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = false,
 )
 abstract class MiCaSongDatabase : RoomDatabase() {
     abstract fun musicDao(): MusicDao
     abstract fun playlistDao(): PlaylistDao
     abstract fun providerDao(): ProviderDao
+    abstract fun downloadDao(): DownloadDao
 
     companion object {
         const val NAME = "micasong.db"
