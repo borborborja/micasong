@@ -15,8 +15,8 @@ android {
         applicationId = "com.micasong.player"
         minSdk = 26
         targetSdk = 35
-        versionCode = 3
-        versionName = "0.0.3"
+        versionCode = 4
+        versionName = "0.0.4"
         vectorDrawables { useSupportLibrary = true }
     }
 
@@ -136,6 +136,8 @@ dependencies {
     testImplementation("org.robolectric:robolectric:4.14.1")
     testImplementation("androidx.test:core-ktx:1.6.1")
     testImplementation(libs.androidx.room.ktx)
+    // Local fake HTTP server for end-to-end provider sync tests.
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.collections.immutable)
 }

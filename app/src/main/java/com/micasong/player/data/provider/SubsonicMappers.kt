@@ -2,7 +2,6 @@ package com.micasong.player.data.provider
 
 import com.micasong.player.data.db.TrackEntity
 import org.json.JSONObject
-import kotlin.math.abs
 
 /**
  * Pure mappers from Subsonic JSON to MiCaSong entities (spec §47), extracted from
@@ -14,7 +13,7 @@ import kotlin.math.abs
  */
 object SubsonicMappers {
 
-    fun stableId(serverId: String): Long = abs(serverId.hashCode().toLong()) or 1L
+    fun stableId(serverId: String): Long = StableId.of(serverId)
 
     /**
      * Map a Subsonic `song` object to a [TrackEntity]. [streamUrl] is the authenticated, playable

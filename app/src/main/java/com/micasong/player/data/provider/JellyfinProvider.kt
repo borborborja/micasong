@@ -10,7 +10,6 @@ import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
-import kotlin.math.abs
 
 /**
  * Jellyfin connector (spec §46). Uses [JellyfinAuth] for header/URL building and reads the music
@@ -112,7 +111,7 @@ class JellyfinProvider(
         null
     }
 
-    private fun String.stableId(): Long = abs(hashCode().toLong()) or 1L
+    private fun String.stableId(): Long = StableId.of(this)
 
     /** The result of a successful Jellyfin login. */
     data class JellyfinSession(val token: String, val userId: String)

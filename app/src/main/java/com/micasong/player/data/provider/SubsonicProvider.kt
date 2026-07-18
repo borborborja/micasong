@@ -10,7 +10,6 @@ import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
-import kotlin.math.abs
 
 /**
  * Subsonic / OpenSubsonic / Navidrome connector — the spec's recommended primary server
@@ -155,5 +154,5 @@ class SubsonicProvider(
         }
     }
 
-    private fun String.stableId(): Long = abs(hashCode().toLong()) or 1L
+    private fun String.stableId(): Long = StableId.of(this)
 }

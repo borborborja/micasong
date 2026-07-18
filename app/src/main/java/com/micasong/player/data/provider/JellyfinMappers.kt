@@ -2,7 +2,6 @@ package com.micasong.player.data.provider
 
 import com.micasong.player.data.db.TrackEntity
 import org.json.JSONObject
-import kotlin.math.abs
 
 /**
  * Pure mappers from Jellyfin JSON items to MiCaSong entities (spec §46), extracted from
@@ -11,7 +10,7 @@ import kotlin.math.abs
  */
 object JellyfinMappers {
 
-    fun stableId(id: String): Long = abs(id.hashCode().toLong()) or 1L
+    fun stableId(id: String): Long = StableId.of(id)
 
     fun parseItem(item: JSONObject, providerId: Long, streamUrl: String, coverUrl: String?): TrackEntity {
         val title = item.optString("Name", "Sin título")
