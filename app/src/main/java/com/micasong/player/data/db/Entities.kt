@@ -54,6 +54,13 @@ data class TrackEntity(
     val isAudiobook: Boolean = false,
     val excludedFromMixes: Boolean = false,
     val offlineState: Int = 0,
+    // ReplayGain (spec §15), chapters (§19) and waveform (§13) — populated where the source supports it.
+    val trackGainDb: Double? = null,
+    val albumGainDb: Double? = null,
+    val trackPeak: Double? = null,
+    val albumPeak: Double? = null,
+    val chaptersJson: String? = null,
+    val waveformJson: String? = null,
 )
 
 @Entity(tableName = "albums", indices = [Index("artistId"), Index("name")])
@@ -150,6 +157,12 @@ fun TrackEntity.toDomain() = Track(
     isAudiobook = isAudiobook,
     excludedFromMixes = excludedFromMixes,
     offlineState = OfflineState.entries.getOrElse(offlineState) { OfflineState.NONE },
+    trackGainDb = trackGainDb,
+    albumGainDb = albumGainDb,
+    trackPeak = trackPeak,
+    albumPeak = albumPeak,
+    chaptersJson = chaptersJson,
+    waveformJson = waveformJson,
 )
 
 fun AlbumEntity.toDomain() = Album(

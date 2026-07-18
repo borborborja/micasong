@@ -68,6 +68,7 @@ data class QueueItem(
 class PlaybackConnection @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val repository: MediaRepository,
+    private val settings: com.micasong.player.data.settings.SettingsRepository,
 ) {
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var controller: MediaController? = null
@@ -96,6 +97,13 @@ class PlaybackConnection @Inject constructor(
     /** trackId → local file path for completed downloads, so playback prefers the offline copy. */
     @Volatile private var localPaths: Map<Long, String> = emptyMap()
 
+    // Volume pipeline: final controller volume = replayGain × fade (spec §13, §15).
+    @Volatile private var rgVolume = 1f
+    @Volatile private var fadeGain = 1f
+    @Volatile private var rgMode = com.micasong.player.data.audio.ReplayGainMode.OFF
+    @Volatile private var crossfadeMs = 0
+    private var lastRgId: String? = null
+
     init {
         val future = MediaController.Builder(context, playbackSessionToken(context)).buildAsync()
         future.addListener({
@@ -114,6 +122,49 @@ class PlaybackConnection @Inject constructor(
                     .associate { it.trackId to it.localPath!! }
             }
             .launchIn(scope)
+
+        // Track the audio settings the volume pipeline reacts to (spec §13, §15).
+        settings.settings
+            .onEach {
+                rgMode = it.replayGainMode
+                crossfadeMs = it.crossfadeMs
+                if (rgMode == com.micasong.player.data.audio.ReplayGainMode.OFF) { rgVolume = 1f; applyVolume() }
+                lastRgId = null // force a recompute against the new mode
+            }
+            .launchIn(scope)
+    }
+
+    private fun applyVolume() {
+        controller?.volume = (rgVolume * fadeGain).coerceIn(0f, 1f)
+    }
+
+    /** Recompute the ReplayGain attenuation for the current track (spec §15). */
+    private fun updateReplayGain(mediaId: String?) {
+        val id = mediaId?.removePrefix("track/")?.toLongOrNull()
+        if (id == null || rgMode == com.micasong.player.data.audio.ReplayGainMode.OFF) {
+            rgVolume = 1f; applyVolume(); return
+        }
+        scope.launch {
+            val t = repository.trackById(id) ?: return@launch
+            val info = com.micasong.player.data.audio.ReplayGainInfo(t.trackGainDb, t.albumGainDb, t.trackPeak, t.albumPeak)
+            rgVolume = com.micasong.player.data.audio.ReplayGain.volumeFor(info, rgMode, albumContext = false)
+            applyVolume()
+        }
+    }
+
+    /** Fade the volume in/out near track boundaries when crossfade is enabled (spec §13). */
+    private fun updateFade() {
+        val c = controller ?: return
+        if (crossfadeMs <= 0) { if (fadeGain != 1f) { fadeGain = 1f; applyVolume() }; return }
+        val pos = c.currentPosition.coerceAtLeast(0)
+        val dur = c.duration.coerceAtLeast(0)
+        val curve = com.micasong.player.data.audio.FadeCurve.SMOOTH
+        val g = when {
+            dur > 0 && dur - pos <= crossfadeMs -> curve.gainOut(((crossfadeMs - (dur - pos)).toFloat() / crossfadeMs))
+            pos < crossfadeMs -> curve.gainIn(pos.toFloat() / crossfadeMs)
+            else -> 1f
+        }
+        if (g != fadeGain) { fadeGain = g; applyVolume() }
     }
 
     /** Build a MediaItem, substituting the local downloaded file when one exists (spec §35). */
@@ -129,6 +180,7 @@ class PlaybackConnection @Inject constructor(
 
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             applySmartFlow(mediaItem)
+            fadeGain = 1f // reset fade for the new track
         }
     }
 
@@ -176,7 +228,7 @@ class PlaybackConnection @Inject constructor(
     private fun startPositionUpdates() {
         scope.launch {
             while (true) {
-                if (controller?.isPlaying == true) { pushState(); maybeExtendSmartQueue() }
+                if (controller?.isPlaying == true) { pushState(); maybeExtendSmartQueue(); updateFade() }
                 delay(500)
             }
         }
@@ -206,6 +258,11 @@ class PlaybackConnection @Inject constructor(
         // Keep the home-screen widget (spec §40) in sync with playback.
         NowPlayingWidget.updateAll(context, _state.value)
         refreshQueue(c)
+        // Recompute ReplayGain when the current track changes (spec §15).
+        if (item?.mediaId != lastRgId) {
+            lastRgId = item?.mediaId
+            updateReplayGain(item?.mediaId)
+        }
     }
 
     private fun refreshQueue(c: MediaController) {

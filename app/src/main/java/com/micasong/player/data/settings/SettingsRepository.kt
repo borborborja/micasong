@@ -39,6 +39,7 @@ data class UserSettings(
     val downloadsWifiOnly: Boolean = false,
     val autoCacheFavorites: Boolean = false,
     val rollingCacheMb: Int = 1024,
+    val replayGainMode: com.micasong.player.data.audio.ReplayGainMode = com.micasong.player.data.audio.ReplayGainMode.OFF,
     // Custom theme (spec §25): Material-Theme-Builder JSON, null = built-in/dynamic palette.
     val customThemeJson: String? = null,
 )
@@ -65,6 +66,7 @@ class SettingsRepository @Inject constructor(
         val AUTO_CACHE_FAVORITES = booleanPreferencesKey("auto_cache_favorites")
         val ROLLING_CACHE_MB = intPreferencesKey("rolling_cache_mb")
         val CUSTOM_THEME = stringPreferencesKey("custom_theme_json")
+        val REPLAY_GAIN = stringPreferencesKey("replay_gain_mode")
     }
 
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
@@ -95,6 +97,8 @@ class SettingsRepository @Inject constructor(
             autoCacheFavorites = p[Keys.AUTO_CACHE_FAVORITES] ?: false,
             rollingCacheMb = p[Keys.ROLLING_CACHE_MB] ?: 1024,
             customThemeJson = p[Keys.CUSTOM_THEME],
+            replayGainMode = p[Keys.REPLAY_GAIN]?.let { runCatching { com.micasong.player.data.audio.ReplayGainMode.valueOf(it) }.getOrNull() }
+                ?: com.micasong.player.data.audio.ReplayGainMode.OFF,
         )
     }
 
@@ -112,6 +116,7 @@ class SettingsRepository @Inject constructor(
     suspend fun setCustomTheme(json: String?) = edit {
         if (json.isNullOrBlank()) it.remove(Keys.CUSTOM_THEME) else it[Keys.CUSTOM_THEME] = json
     }
+    suspend fun setReplayGainMode(mode: com.micasong.player.data.audio.ReplayGainMode) = edit { it[Keys.REPLAY_GAIN] = mode.name }
 
     /** Overwrite every preference at once, used when restoring a backup (spec §43). */
     suspend fun applySettings(s: UserSettings) = edit {
@@ -129,6 +134,7 @@ class SettingsRepository @Inject constructor(
         it[Keys.AUTO_CACHE_FAVORITES] = s.autoCacheFavorites
         it[Keys.ROLLING_CACHE_MB] = s.rollingCacheMb
         if (s.customThemeJson.isNullOrBlank()) it.remove(Keys.CUSTOM_THEME) else it[Keys.CUSTOM_THEME] = s.customThemeJson
+        it[Keys.REPLAY_GAIN] = s.replayGainMode.name
     }
 
     private suspend fun edit(block: (androidx.datastore.preferences.core.MutablePreferences) -> Unit) {

@@ -43,6 +43,12 @@ class SettingsViewModel @Inject constructor(
 
     fun clearCustomTheme() = viewModelScope.launch { settings.setCustomTheme(null) }
 
+    // ---- Audio (spec §13, §15) ----
+    fun setReplayGainMode(mode: com.micasong.player.data.audio.ReplayGainMode) =
+        viewModelScope.launch { settings.setReplayGainMode(mode) }
+
+    fun setCrossfade(ms: Int) = viewModelScope.launch { settings.setCrossfade(ms) }
+
     // ---- Offline / cache (spec §35) ----
     fun setDownloadsWifiOnly(v: Boolean) = viewModelScope.launch { settings.setDownloadsWifiOnly(v) }
     fun setRollingCacheMb(mb: Int) = viewModelScope.launch { settings.setRollingCacheMb(mb) }

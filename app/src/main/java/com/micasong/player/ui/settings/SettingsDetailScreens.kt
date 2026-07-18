@@ -167,7 +167,47 @@ fun ReproduccionSettingsScreen(
                 subtitle = "${state.personalMixSize} pistas",
             )
         }
+
+        item { CategoryHeading("ReplayGain (normalización)") }
+        item {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                com.micasong.player.data.audio.ReplayGainMode.entries.forEach { mode ->
+                    FilterChip(
+                        selected = state.replayGainMode == mode,
+                        onClick = { viewModel.setReplayGainMode(mode) },
+                        label = { Text(replayGainLabel(mode)) },
+                    )
+                }
+            }
+        }
+
+        item { CategoryHeading("Transiciones") }
+        item { SettingRow(title = "Fundido entre pistas", subtitle = if (state.crossfadeMs == 0) "Desactivado" else "${state.crossfadeMs / 1000} s") }
+        item {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                listOf(0, 2000, 4000, 8000).forEach { ms ->
+                    FilterChip(
+                        selected = state.crossfadeMs == ms,
+                        onClick = { viewModel.setCrossfade(ms) },
+                        label = { Text(if (ms == 0) "Off" else "${ms / 1000}s") },
+                    )
+                }
+            }
+        }
     }
+}
+
+private fun replayGainLabel(m: com.micasong.player.data.audio.ReplayGainMode): String = when (m) {
+    com.micasong.player.data.audio.ReplayGainMode.OFF -> "Off"
+    com.micasong.player.data.audio.ReplayGainMode.TRACK -> "Pista"
+    com.micasong.player.data.audio.ReplayGainMode.ALBUM -> "Álbum"
+    com.micasong.player.data.audio.ReplayGainMode.AUTO -> "Auto"
 }
 
 /** Avanzado: sync now + a note (spec §44 › Advanced). */

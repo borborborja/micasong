@@ -41,6 +41,12 @@ data class Track(
     val isAudiobook: Boolean = false,
     val excludedFromMixes: Boolean = false,
     val offlineState: OfflineState = OfflineState.NONE,
+    val trackGainDb: Double? = null,
+    val albumGainDb: Double? = null,
+    val trackPeak: Double? = null,
+    val albumPeak: Double? = null,
+    val chaptersJson: String? = null,
+    val waveformJson: String? = null,
 ) {
     /** A short "1:01:42 · 2024 · FLAC · 24/96"-style quality descriptor (spec §22.3). */
     val qualityLabel: String?

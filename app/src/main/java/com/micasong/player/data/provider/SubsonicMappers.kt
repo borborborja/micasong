@@ -47,8 +47,16 @@ object SubsonicMappers {
             sizeBytes = song.optLong("size").takeIf { it > 0 },
             artworkUri = coverUrl,
             dateAdded = 0L,
+            // OpenSubsonic ReplayGain (spec §15): { trackGain, albumGain, trackPeak, albumPeak }.
+            trackGainDb = song.optJSONObject("replayGain")?.optDoubleOrNull("trackGain"),
+            albumGainDb = song.optJSONObject("replayGain")?.optDoubleOrNull("albumGain"),
+            trackPeak = song.optJSONObject("replayGain")?.optDoubleOrNull("trackPeak"),
+            albumPeak = song.optJSONObject("replayGain")?.optDoubleOrNull("albumPeak"),
         )
     }
+
+    private fun JSONObject.optDoubleOrNull(key: String): Double? =
+        if (has(key) && !isNull(key)) optDouble(key).takeIf { !it.isNaN() } else null
 
     /**
      * Convert an OpenSubsonic `getLyricsBySongId` response to LRC text (spec §41), or plain text
