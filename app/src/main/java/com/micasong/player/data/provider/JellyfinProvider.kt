@@ -58,41 +58,28 @@ class JellyfinProvider(
                 val json = getJson(url) ?: return@withContext empty()
                 val items = json.optJSONArray("Items") ?: return@withContext empty()
                 onProgress(0.5f, "Recopilando pistas")
+                val base = config.primaryUrl ?: return@withContext empty()
                 for (i in 0 until items.length()) {
-                    val it = items.getJSONObject(i)
-                    val id = it.optString("Id").stableId()
-                    val albumName = it.optString("Album").ifBlank { "Álbum desconocido" }
-                    val albumId = it.optString("AlbumId").ifBlank { albumName }.stableId()
-                    val artistName = it.optString("AlbumArtist").ifBlank { it.optString("Artists") }
-                    val artistId = artistName.stableId()
-                    val year = it.optInt("ProductionYear").takeIf { y -> y > 0 }
-                    tracks += TrackEntity(
-                        id = id,
-                        providerId = config.id,
-                        mediaUri = it.optString("Id"),   // server item id; resolved by streamUri
-                        title = it.optString("Name", "Sin título"),
-                        titleSort = it.optString("Name").lowercase(),
-                        albumId = albumId,
-                        albumName = albumName,
-                        artistId = artistId,
-                        artistName = artistName.ifBlank { "Artista desconocido" },
-                        albumArtist = it.optString("AlbumArtist").ifBlank { null },
-                        trackNumber = it.optInt("IndexNumber").takeIf { n -> n > 0 },
-                        discNumber = it.optInt("ParentIndexNumber").takeIf { n -> n > 0 },
-                        durationMs = it.optLong("RunTimeTicks") / 10_000,   // ticks (100 ns) → ms
-                        year = year,
-                        genre = it.optJSONArray("Genres")?.optString(0),
-                        mimeType = null,
-                        bitrate = null,
-                        sampleRate = null,
-                        bitDepth = null,
-                        sizeBytes = null,
-                        artworkUri = JellyfinAuth.endpointUrl(config.primaryUrl!!, "/Items/${it.optString("Id")}/Images/Primary"),
-                        dateAdded = 0L,
+                    val item = items.getJSONObject(i)
+                    val itemId = item.optString("Id")
+                    // Playable stream URL (a bare item id isn't playable): direct stream + api_key.
+                    val streamUrl = JellyfinAuth.endpointUrl(
+                        base, "/Audio/$itemId/stream",
+                        buildMap { put("static", "true"); config.secret?.let { put("api_key", it) } },
                     )
-                    albums.getOrPut(albumId) {
-                        AlbumEntity(albumId, albumName, albumName.lowercase(), artistName, artistId, year, 0, 0, null)
+                    val coverUrl = JellyfinAuth.endpointUrl(
+                        base, "/Items/$itemId/Images/Primary",
+                        buildMap { config.secret?.let { put("api_key", it) } },
+                    )
+                    val track = JellyfinMappers.parseItem(item, config.id, streamUrl, coverUrl)
+                    tracks += track
+                    track.albumId?.let { albumId ->
+                        albums.getOrPut(albumId) {
+                            AlbumEntity(albumId, track.albumName ?: "?", (track.albumName ?: "").lowercase(),
+                                track.artistName, track.artistId, track.year, 0, 0, null)
+                        }
                     }
+                    item.optJSONArray("Genres")?.optString(0)?.ifBlank { null }?.let { genres[it] = (genres[it] ?: 0) + 1 }
                 }
                 onProgress(1f, "Completado")
             } catch (e: Exception) {
@@ -106,14 +93,8 @@ class JellyfinProvider(
             )
         }
 
-    override suspend fun streamUri(track: TrackEntity, maxBitrate: Int): String {
-        val params = buildMap {
-            put("static", if (maxBitrate > 0) "false" else "true")
-            if (maxBitrate > 0) put("maxStreamingBitrate", maxBitrate.toString())
-            config.secret?.let { put("api_key", it) }
-        }
-        return JellyfinAuth.endpointUrl(config.primaryUrl ?: "", "/Audio/${track.mediaUri}/universal", params)
-    }
+    // Tracks already carry a ready-to-play, authenticated stream URL in mediaUri (built at sync).
+    override suspend fun streamUri(track: TrackEntity, maxBitrate: Int): String = track.mediaUri
 
     private fun empty() = ProviderSnapshot(emptyList(), emptyList(), emptyList(), emptyList())
 
