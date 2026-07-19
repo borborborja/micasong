@@ -28,7 +28,7 @@ class SettingsViewModel @Inject constructor(
     fun setGapless(v: Boolean) = viewModelScope.launch { settings.setGapless(v) }
     fun setWeightedShuffle(v: Boolean) = viewModelScope.launch { settings.setWeightedShuffle(v) }
     fun setExpandPlayer(v: Boolean) = viewModelScope.launch { settings.setExpandPlayer(v) }
-    fun resync() = viewModelScope.launch { repository.syncAll() }
+    fun resync() = repository.triggerSync()
 
     // ---- Custom theme (spec §25) ----
     /** Import a Material-Theme-Builder JSON; returns false (via callback) if it isn't a valid theme. */

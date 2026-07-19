@@ -48,7 +48,7 @@ class HomeViewModel @Inject constructor(
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HomeUiState())
 
-    fun sync() = viewModelScope.launch { repository.syncAll() }
+    fun sync() = repository.triggerSync()
 
     fun playFavoriteTracks(startIndex: Int) {
         viewModelScope.launch {

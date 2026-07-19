@@ -52,9 +52,11 @@ class ProvidersViewModel @Inject constructor(
         viewModelScope.launch {
             _busy.value = true
             try {
+                // Validate + persist the provider (quick); if it checks out, kick off the sync on
+                // the app scope so it keeps running even if the user leaves this screen.
                 val config = buildConfig(type, name, normalizedUrl, username, secret) ?: return@launch
                 repository.addProvider(config)
-                repository.syncAll()
+                repository.triggerSync()
             } finally {
                 _busy.value = false
             }

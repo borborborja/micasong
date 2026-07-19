@@ -33,7 +33,12 @@ import com.micasong.player.data.smart.SmartPlaylistDefinition
 import com.micasong.player.data.smart.SmartQueueExtender
 import com.micasong.player.data.smart.SmartQueueMode
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
@@ -94,6 +99,17 @@ class MediaRepository @Inject constructor(
 
     private val _syncState = MutableStateFlow(SyncState())
     val syncState: StateFlow<SyncState> = _syncState
+
+    // Sync runs on an application-scoped coroutine so it survives leaving the screen / backgrounding
+    // (a ViewModel scope would cancel it mid-way, leaving an empty/partial library — spec §9).
+    private val syncScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    @Volatile private var syncJob: Job? = null
+
+    /** Fire-and-forget sync that outlives the UI; observe [syncState] for progress. */
+    fun triggerSync() {
+        if (syncJob?.isActive == true) return // a sync is already running
+        syncJob = syncScope.launch { syncAll() }
+    }
 
     val trackCount: Flow<Int> = musicDao.trackCount()
 
