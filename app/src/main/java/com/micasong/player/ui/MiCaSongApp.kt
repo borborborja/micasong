@@ -149,6 +149,9 @@ fun MiCaSongApp() {
             composable(com.micasong.player.ui.settings.SettingsCategory.GENERATED_FILES.route) {
                 com.micasong.player.ui.settings.GeneratedFilesScreen(onBack = { navController.popBackStack() })
             }
+            composable(com.micasong.player.ui.settings.SettingsCategory.UPDATE.route) {
+                com.micasong.player.ui.settings.UpdateScreen(onBack = { navController.popBackStack() })
+            }
 
             composable(
                 route = Routes.ALBUM,

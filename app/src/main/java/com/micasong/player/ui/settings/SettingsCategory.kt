@@ -9,6 +9,7 @@ import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.outlined.Devices
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -35,10 +36,11 @@ enum class SettingsCategory(
     SYNC("settings/sync", "Administrador de sincronización", "Vuelve a escanear tus proveedores", Icons.Filled.Sync),
     OFFLINE_FILES("settings/offline_files", "Administrar archivos sin conexión", "Descargas guardadas en el dispositivo", Icons.Filled.Storage),
     GENERATED_FILES("settings/generated", "Administrar archivos generados", "Registros y copias de seguridad", Icons.Filled.Folder),
-    BACKUP("backup", "Copia de seguridad", "Exporta o restaura tu configuración", Icons.Filled.Backup);
+    BACKUP("backup", "Copia de seguridad", "Exporta o restaura tu configuración", Icons.Filled.Backup),
+    UPDATE("settings/update", "Actualizar la app", "Busca e instala la última versión de GitHub", Icons.Filled.SystemUpdate);
 
     companion object {
         val CONFIG = listOf(INTERFACE, PLAYBACK, OFFLINE, ANDROID_AUTO, ADVANCED)
-        val MISC = listOf(PROVIDERS, SYNC, OFFLINE_FILES, GENERATED_FILES, BACKUP)
+        val MISC = listOf(PROVIDERS, SYNC, OFFLINE_FILES, GENERATED_FILES, BACKUP, UPDATE)
     }
 }
