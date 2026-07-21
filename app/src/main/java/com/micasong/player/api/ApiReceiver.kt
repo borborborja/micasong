@@ -32,7 +32,10 @@ class ApiReceiver : BroadcastReceiver() {
         val command = ApiCommandParser.parse(intent.action, IntentExtras(intent))
         when (command) {
             is ApiCommand.MediaControl -> handleControl(command)
-            is ApiCommand.MediaSync -> runAsync { repository.syncAll() }
+            // PROVIDER_ID targets one server (its row id in Settings order); without it, sync everything.
+            is ApiCommand.MediaSync -> runAsync {
+                repository.syncAll(command.providerId?.let { com.micasong.player.data.db.PROVIDER_ID_BASE + it })
+            }
             is ApiCommand.MediaStart -> handleStart(command)
             is ApiCommand.CustomAction -> handleCustom(command)
             is ApiCommand.ChangeSetting -> handleChangeSetting(command)

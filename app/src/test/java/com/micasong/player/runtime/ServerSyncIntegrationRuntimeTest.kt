@@ -95,6 +95,64 @@ class ServerSyncIntegrationRuntimeTest {
     }
 
     @Test
+    fun `targeted re-sync only queries the requested provider`() = runBlocking {
+        addSubsonicServer()
+        // A second server with its own library.
+        val other = MockWebServer()
+        other.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                val path = request.requestUrl?.encodedPath ?: ""
+                val json = when {
+                    path.endsWith("/ping.view") -> """{"subsonic-response":{"status":"ok"}}"""
+                    path.endsWith("/getArtists.view") -> """{"subsonic-response":{"artists":{"index":[]}}}"""
+                    path.endsWith("/getAlbumList2.view") ->
+                        if ((request.requestUrl?.queryParameter("offset")?.toIntOrNull() ?: 0) > 0)
+                            """{"subsonic-response":{"albumList2":{"album":[]}}}"""
+                        else
+                            """{"subsonic-response":{"albumList2":{"album":[{"id":"al9","name":"Otro","artist":"Otra","artistId":"ar9","songCount":1,"duration":100}]}}}"""
+                    path.endsWith("/getAlbum.view") -> """{"subsonic-response":{"album":{"id":"al9","song":[
+                        {"id":"s9","title":"Solo","album":"Otro","albumId":"al9","artist":"Otra","artistId":"ar9","track":1,"duration":100}
+                    ]}}}"""
+                    else -> """{"subsonic-response":{"status":"failed"}}"""
+                }
+                return MockResponse().addHeader("Content-Type", "application/json").setBody(json)
+            }
+        }
+        other.start()
+        val otherRowId = db.providerDao().upsert(
+            ProviderConfigEntity(
+                type = "SUBSONIC", displayName = "Otro",
+                primaryUrl = other.url("").toString().trimEnd('/'),
+                secondaryUrl = null, username = "bob", secret = "secret",
+            )
+        )
+
+        repository.syncAll()
+        assertEquals(3, repository.allTracks.first().size) // 2 from the first server + 1 from the other
+
+        // Force a re-sync of only the second provider: the first server must not be queried again,
+        // and its tracks must remain untouched.
+        val firstServerRequests = server.requestCount
+        repository.syncAll(onlyConfigId = com.micasong.player.data.db.PROVIDER_ID_BASE + otherRowId)
+        assertEquals("first server must not be re-queried", firstServerRequests, server.requestCount)
+        assertEquals(3, repository.allTracks.first().size)
+        other.shutdown()
+    }
+
+    @Test
+    fun `editing a provider updates the same row instead of adding one`() = runBlocking {
+        addSubsonicServer()
+        val before = repository.providerConfigs.first().single()
+
+        repository.updateProvider(before.copy(displayName = "Renombrado"))
+
+        val after = repository.providerConfigs.first().single() // still exactly one row
+        assertEquals(before.id, after.id)
+        assertEquals("Renombrado", after.displayName)
+        assertEquals(before.primaryUrl, after.primaryUrl)
+    }
+
+    @Test
     fun `re-sync preserves a locally-set favorite`() = runBlocking {
         addSubsonicServer()
         repository.syncAll()

@@ -94,6 +94,12 @@ class MediaRepository @Inject constructor(
     }
 
     suspend fun addProvider(config: ProviderConfig): Long = providerDao.upsert(config.toEntity())
+
+    /** Update an existing server connection in place (same row id), e.g. after editing URL/credentials. */
+    suspend fun updateProvider(config: ProviderConfig) {
+        providerDao.upsert(config.toEntity(rowId = config.id - com.micasong.player.data.db.PROVIDER_ID_BASE))
+    }
+
     suspend fun removeProvider(rowId: Long) = providerDao.delete(rowId)
     suspend fun setActiveConnection(rowId: Long, connection: Int) = providerDao.setActiveConnection(rowId, connection)
 
@@ -105,10 +111,13 @@ class MediaRepository @Inject constructor(
     private val syncScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     @Volatile private var syncJob: Job? = null
 
-    /** Fire-and-forget sync that outlives the UI; observe [syncState] for progress. */
-    fun triggerSync() {
+    /**
+     * Fire-and-forget sync that outlives the UI; observe [syncState] for progress. Pass a provider's
+     * config id in [onlyConfigId] to re-sync just that server (forced re-sync from Settings).
+     */
+    fun triggerSync(onlyConfigId: Long? = null) {
         if (syncJob?.isActive == true) return // a sync is already running
-        syncJob = syncScope.launch { syncAll() }
+        syncJob = syncScope.launch { syncAll(onlyConfigId) }
     }
 
     val trackCount: Flow<Int> = musicDao.trackCount()
@@ -376,10 +385,10 @@ class MediaRepository @Inject constructor(
     suspend fun tracksByIds(ids: List<Long>): List<Track> = musicDao.tracksByIds(ids).map { it.toDomain() }
 
     // ---- Sync ----
-    suspend fun syncAll() {
+    suspend fun syncAll(onlyConfigId: Long? = null) {
         _syncState.value = SyncState(running = true, message = "Sincronizando…")
         try {
-            buildProviders().forEach { provider ->
+            buildProviders().filter { onlyConfigId == null || it.config.id == onlyConfigId }.forEach { provider ->
                 val snapshot = provider.sync { p, msg -> _syncState.value = SyncState(true, p, msg) }
                 if (provider.config.type == ProviderType.LOCAL) {
                     // Local: a full re-scan replaces the device library outright.

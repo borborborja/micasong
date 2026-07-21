@@ -130,8 +130,47 @@ class ProvidersViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Re-validate and save an edited connection over the same row, then force a re-sync of just
+     * that server. For token-based backends (Jellyfin/Emby/AudioBookShelf) leaving the credential
+     * fields blank keeps the stored session and only updates the name/URL.
+     */
+    fun updateServer(
+        providerId: Long,
+        type: ProviderType,
+        name: String,
+        url: String,
+        username: String,
+        secret: String,
+    ) {
+        val normalizedUrl = ServerUrl.normalize(url)
+        if (normalizedUrl == null) {
+            _error.value = "Introduce una URL válida (p. ej. http://192.168.1.10:4533)"
+            return
+        }
+        viewModelScope.launch {
+            _busy.value = true
+            try {
+                val existing = providers.value.firstOrNull { it.id == providerId } ?: return@launch
+                val config = if (username.isBlank() && secret.isBlank()) {
+                    existing.copy(displayName = name.ifBlank { normalizedUrl }, primaryUrl = normalizedUrl)
+                } else {
+                    buildConfig(type, name, normalizedUrl, username, secret)?.copy(id = providerId)
+                        ?: return@launch // buildConfig already surfaced the validation error
+                }
+                repository.updateProvider(config)
+                repository.triggerSync(providerId)
+            } finally {
+                _busy.value = false
+            }
+        }
+    }
+
+    /** Force a re-sync of one server (or everything with null), e.g. after changing its library. */
+    fun syncNow(providerId: Long? = null) = repository.triggerSync(providerId)
+
     fun remove(providerId: Long) {
-        val rowId = providerId - 1000L
+        val rowId = providerId - com.micasong.player.data.db.PROVIDER_ID_BASE
         viewModelScope.launch { repository.removeProvider(rowId) }
     }
 }

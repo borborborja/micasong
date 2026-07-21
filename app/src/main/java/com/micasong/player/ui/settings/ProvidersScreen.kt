@@ -17,6 +17,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Dns
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -39,6 +41,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.micasong.player.data.provider.ProviderConfig
 import com.micasong.player.data.provider.ProviderType
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -53,6 +56,7 @@ fun ProvidersScreen(
     val syncState by viewModel.syncState.collectAsStateWithLifecycle()
     val trackCount by viewModel.trackCount.collectAsStateWithLifecycle()
     var showAdd by remember { mutableStateOf(false) }
+    var editing by remember { mutableStateOf<ProviderConfig?>(null) }
 
     Scaffold(
         topBar = {
@@ -61,6 +65,11 @@ fun ProvidersScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { viewModel.syncNow() }, enabled = !syncState.running) {
+                        Icon(Icons.Filled.Refresh, contentDescription = "Sincronizar todo")
                     }
                 },
             )
@@ -140,6 +149,12 @@ fun ProvidersScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
+                    IconButton(onClick = { viewModel.syncNow(provider.id) }, enabled = !syncState.running) {
+                        Icon(Icons.Filled.Refresh, contentDescription = "Volver a sincronizar")
+                    }
+                    IconButton(onClick = { editing = provider }) {
+                        Icon(Icons.Filled.Edit, contentDescription = "Editar")
+                    }
                     IconButton(onClick = { viewModel.remove(provider.id) }) {
                         Icon(Icons.Filled.Delete, contentDescription = "Eliminar")
                     }
@@ -149,47 +164,70 @@ fun ProvidersScreen(
     }
 
     if (showAdd) {
-        AddServerDialog(
+        ServerDialog(
             onDismiss = { showAdd = false },
-            onAdd = { type, name, url, user, secret ->
+            onConfirm = { type, name, url, user, secret ->
                 viewModel.addServer(type, name, url, user, secret)
                 showAdd = false
             },
         )
     }
+    editing?.let { current ->
+        ServerDialog(
+            initial = current,
+            onDismiss = { editing = null },
+            onConfirm = { type, name, url, user, secret ->
+                viewModel.updateServer(current.id, type, name, url, user, secret)
+                editing = null
+            },
+        )
+    }
 }
 
+/** Credential-stored backends can prefill user/secret on edit; token backends must re-login. */
+private fun storesPlainCredentials(type: ProviderType): Boolean =
+    type == ProviderType.SUBSONIC || type == ProviderType.KODI || type == ProviderType.WEBDAV || type == ProviderType.PLEX
+
 @Composable
-private fun AddServerDialog(
+private fun ServerDialog(
     onDismiss: () -> Unit,
-    onAdd: (ProviderType, String, String, String, String) -> Unit,
+    onConfirm: (ProviderType, String, String, String, String) -> Unit,
+    initial: ProviderConfig? = null,
 ) {
-    var type by remember { mutableStateOf(ProviderType.SUBSONIC) }
-    var name by remember { mutableStateOf("") }
-    var url by remember { mutableStateOf("") }
-    var user by remember { mutableStateOf("") }
-    var secret by remember { mutableStateOf("") }
+    var type by remember { mutableStateOf(initial?.type ?: ProviderType.SUBSONIC) }
+    var name by remember { mutableStateOf(initial?.displayName ?: "") }
+    var url by remember { mutableStateOf(initial?.primaryUrl ?: "") }
+    var user by remember { mutableStateOf(initial?.takeIf { storesPlainCredentials(it.type) }?.username ?: "") }
+    var secret by remember { mutableStateOf(initial?.takeIf { storesPlainCredentials(it.type) }?.secret ?: "") }
+    val isEdit = initial != null
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Añadir servidor") },
+        title = { Text(if (isEdit) "Editar servidor" else "Añadir servidor") },
         text = {
             Column {
-                Row(
-                    Modifier.horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    FilterChip(type == ProviderType.SUBSONIC, { type = ProviderType.SUBSONIC }, { Text("Subsonic") })
-                    FilterChip(type == ProviderType.JELLYFIN, { type = ProviderType.JELLYFIN }, { Text("Jellyfin") })
-                    FilterChip(type == ProviderType.EMBY, { type = ProviderType.EMBY }, { Text("Emby") })
-                    FilterChip(type == ProviderType.PLEX, { type = ProviderType.PLEX }, { Text("Plex") })
-                    FilterChip(type == ProviderType.KODI, { type = ProviderType.KODI }, { Text("Kodi") })
-                    FilterChip(type == ProviderType.WEBDAV, { type = ProviderType.WEBDAV }, { Text("WebDAV") })
-                    FilterChip(type == ProviderType.AUDIOBOOKSHELF, { type = ProviderType.AUDIOBOOKSHELF }, { Text("AudioBookShelf") })
+                // The backend type is fixed once created (the library ids derive from it).
+                if (!isEdit) {
+                    Row(
+                        Modifier.horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        FilterChip(type == ProviderType.SUBSONIC, { type = ProviderType.SUBSONIC }, { Text("Subsonic") })
+                        FilterChip(type == ProviderType.JELLYFIN, { type = ProviderType.JELLYFIN }, { Text("Jellyfin") })
+                        FilterChip(type == ProviderType.EMBY, { type = ProviderType.EMBY }, { Text("Emby") })
+                        FilterChip(type == ProviderType.PLEX, { type = ProviderType.PLEX }, { Text("Plex") })
+                        FilterChip(type == ProviderType.KODI, { type = ProviderType.KODI }, { Text("Kodi") })
+                        FilterChip(type == ProviderType.WEBDAV, { type = ProviderType.WEBDAV }, { Text("WebDAV") })
+                        FilterChip(type == ProviderType.AUDIOBOOKSHELF, { type = ProviderType.AUDIOBOOKSHELF }, { Text("AudioBookShelf") })
+                    }
+                    Spacer(Modifier.height(8.dp))
                 }
-                Spacer(Modifier.height(8.dp))
                 Text(
-                    providerHint(type),
+                    if (isEdit && !storesPlainCredentials(type)) {
+                        "Deja usuario y contraseña en blanco para conservar la sesión actual, o rellénalos para iniciar sesión de nuevo."
+                    } else {
+                        providerHint(type)
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -222,7 +260,11 @@ private fun AddServerDialog(
                 )
             }
         },
-        confirmButton = { TextButton(onClick = { onAdd(type, name, url, user, secret) }, enabled = url.isNotBlank()) { Text("Conectar") } },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(type, name, url, user, secret) }, enabled = url.isNotBlank()) {
+                Text(if (isEdit) "Guardar y sincronizar" else "Conectar")
+            }
+        },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
     )
 }
