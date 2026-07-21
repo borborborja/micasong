@@ -400,7 +400,9 @@ class MediaRepository @Inject constructor(
      * Apply a server snapshot differentially (spec §9), preserving local user state (favorites,
      * ratings, play counts, offline state) via [ServerSyncMerge] — a re-sync must never wipe it.
      */
-    private suspend fun applyServerSnapshot(providerId: Long, snapshot: com.micasong.player.data.provider.ProviderSnapshot) {
+    private suspend fun applyServerSnapshot(providerId: Long, rawSnapshot: com.micasong.player.data.provider.ProviderSnapshot) {
+        // Fill in artist/album/genre tables the backend couldn't supply (else their tabs come up empty).
+        val snapshot = com.micasong.player.data.provider.SnapshotDerive.enrich(rawSnapshot)
         val existing = musicDao.tracksByProviderList(providerId)
         val apply = ServerSyncMerge.merge(existing, snapshot.tracks)
 

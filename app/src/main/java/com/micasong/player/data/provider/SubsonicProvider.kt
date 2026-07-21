@@ -89,6 +89,31 @@ class SubsonicProvider(
                 return@withContext null
             }
         }
+
+        // "Incompatible version" (30): the server is older than our minimum. Its error response
+        // still reports its own version — retry at that version, token auth first, then legacy
+        // (pre-1.13 servers don't support token auth at all).
+        if (code == 30) {
+            val serverVersion = tokenResp.optString("version").ifBlank { null }
+            if (serverVersion != null && serverVersion != SubsonicAuth.API_VERSION) {
+                val tokenRetry = getJson(endpointWith("ping", emptyMap(), legacy = false, version = serverVersion))
+                    ?.optJSONObject("subsonic-response")
+                if (tokenRetry?.optString("status") == "ok") {
+                    useLegacyAuth = false
+                    apiVersion = serverVersion
+                    adopt(tokenRetry)
+                    return@withContext null
+                }
+                val legacyRetry = getJson(endpointWith("ping", emptyMap(), legacy = true, version = serverVersion))
+                    ?.optJSONObject("subsonic-response")
+                if (legacyRetry?.optString("status") == "ok") {
+                    useLegacyAuth = true
+                    apiVersion = serverVersion
+                    adopt(legacyRetry)
+                    return@withContext null
+                }
+            }
+        }
         errorMessage(tokenResp)
     }
 
@@ -239,12 +264,34 @@ class SubsonicProvider(
     private fun getJson(urlString: String): JSONObject? {
         if (urlString.isBlank()) return null
         return try {
-            val conn = (URL(urlString).openConnection() as HttpURLConnection).apply {
-                connectTimeout = 8000
-                readTimeout = 15000
-                requestMethod = "GET"
+            // Follow redirects by hand: HttpURLConnection refuses cross-scheme hops, and reverse
+            // proxies commonly redirect http→https — exactly the "can't connect" people hit (§5.1).
+            var url = URL(urlString)
+            var conn: HttpURLConnection
+            var hops = 0
+            while (true) {
+                conn = (url.openConnection() as HttpURLConnection).apply {
+                    connectTimeout = 8000
+                    readTimeout = 15000
+                    requestMethod = "GET"
+                    instanceFollowRedirects = false
+                }
+                val status = conn.responseCode
+                if (status in 300..399 && hops < 5) {
+                    val location = conn.getHeaderField("Location")
+                    if (location != null) {
+                        url = URL(url, location)
+                        conn.disconnect()
+                        hops++
+                        continue
+                    }
+                }
+                break
             }
-            conn.inputStream.bufferedReader().use { JSONObject(it.readText()) }
+            // Some servers/proxies put the Subsonic error JSON on a 4xx body — read it rather than
+            // collapsing every non-200 into a generic "can't connect".
+            val stream = if (conn.responseCode >= 400) conn.errorStream else conn.inputStream
+            stream?.bufferedReader()?.use { JSONObject(it.readText()) }
         } catch (e: Exception) {
             Log.w("SubsonicProvider", "request failed for $urlString: ${e.message}")
             null

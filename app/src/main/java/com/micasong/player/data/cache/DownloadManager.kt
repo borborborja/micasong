@@ -39,7 +39,7 @@ class DownloadManager @Inject constructor(
     private val settings: SettingsRepository,
 ) : DownloadTrigger {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    private val client = OkHttpClient()
+    private val client = OkHttpClient.Builder().addInterceptor(BasicAuthInterceptor).build()
     private val running = AtomicBoolean(false)
     private val dir = File(context.filesDir, "offline").apply { mkdirs() }
 

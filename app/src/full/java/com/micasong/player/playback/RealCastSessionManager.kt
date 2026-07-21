@@ -2,10 +2,15 @@ package com.micasong.player.playback
 
 import android.content.Context
 import androidx.media3.cast.CastPlayer
+import androidx.media3.cast.DefaultMediaItemConverter
+import androidx.media3.cast.MediaItemConverter
 import androidx.media3.cast.SessionAvailabilityListener
+import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.session.MediaSession
+import com.google.android.gms.cast.MediaQueueItem
 import com.google.android.gms.cast.framework.CastContext
+import com.micasong.player.data.audio.AudioMime
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -14,8 +19,9 @@ import javax.inject.Singleton
  * from the shared [CastContext] and, whenever a Cast session connects, moves the queue and playback
  * position from the local ExoPlayer onto the cast device — handing it back when the session ends.
  *
- * Note: only network-reachable streams cast (server stream URLs); `content://` files on the phone
- * are not reachable by the Chromecast, so local-file playback stays on the device.
+ * Note: only network-reachable streams cast (server stream URLs); `content://`/`file://` tracks on
+ * the phone are not reachable by the Chromecast, so they are filtered out of the cast queue and the
+ * handoff is skipped entirely when nothing in the queue is castable.
  */
 @Singleton
 class RealCastSessionManager @Inject constructor() : CastSessionManager {
@@ -35,7 +41,7 @@ class RealCastSessionManager @Inject constructor() : CastSessionManager {
             CastContext.getSharedInstance(context.applicationContext)
         }.getOrNull() ?: return
 
-        val cp = CastPlayer(castContext)
+        val cp = CastPlayer(castContext, LenientMediaItemConverter())
         cp.setSessionAvailabilityListener(object : SessionAvailabilityListener {
             override fun onCastSessionAvailable() = setCurrentPlayer(cp)
             override fun onCastSessionUnavailable() = this@RealCastSessionManager.localPlayer?.let(::setCurrentPlayer) ?: Unit
@@ -53,18 +59,36 @@ class RealCastSessionManager @Inject constructor() : CastSessionManager {
         if (from === target) return
 
         val items = (0 until from.mediaItemCount).map { from.getMediaItemAt(it) }
-        val index = from.currentMediaItemIndex.coerceAtLeast(0)
-        val position = from.currentPosition.coerceAtLeast(0)
+        var index = from.currentMediaItemIndex.coerceAtLeast(0)
+        var position = from.currentPosition.coerceAtLeast(0)
         val playWhenReady = from.playWhenReady
+
+        // The Chromecast can only fetch http(s) streams — keep the castable subset and stay on the
+        // local player when there is none, instead of handing it an unplayable (crashing) queue.
+        var queue = items
+        if (target === castPlayer) {
+            val castable = items.filter { isCastable(it) }
+            if (castable.isEmpty() && items.isNotEmpty()) return
+            val currentId = items.getOrNull(index)?.mediaId
+            val newIndex = castable.indexOfFirst { it.mediaId == currentId }
+            if (newIndex < 0) position = 0
+            index = newIndex.coerceAtLeast(0)
+            queue = castable
+        }
 
         from.pause() // release audio focus before the other player takes over
         s.player = target
-        if (items.isNotEmpty()) {
-            target.setMediaItems(items, index, position)
+        if (queue.isNotEmpty()) {
+            target.setMediaItems(queue, index, position)
             target.playWhenReady = playWhenReady
             target.prepare()
         }
         casting = target === castPlayer
+    }
+
+    private fun isCastable(item: MediaItem): Boolean {
+        val scheme = item.localConfiguration?.uri?.scheme?.lowercase()
+        return scheme == "http" || scheme == "https"
     }
 
     override fun isCasting(): Boolean = casting
@@ -76,5 +100,23 @@ class RealCastSessionManager @Inject constructor() : CastSessionManager {
         session = null
         localPlayer = null
         casting = false
+    }
+}
+
+/**
+ * media3's [DefaultMediaItemConverter] throws ("The item must specify its mimeType") on items with
+ * no MIME type, which several providers cannot supply. Fill in a best-effort audio MIME before
+ * delegating so casting works for every backend.
+ */
+private class LenientMediaItemConverter : MediaItemConverter {
+    private val delegate = DefaultMediaItemConverter()
+
+    override fun toMediaItem(mediaQueueItem: MediaQueueItem): MediaItem = delegate.toMediaItem(mediaQueueItem)
+
+    override fun toMediaQueueItem(mediaItem: MediaItem): MediaQueueItem {
+        val config = mediaItem.localConfiguration
+        if (config?.mimeType != null) return delegate.toMediaQueueItem(mediaItem)
+        val guessed = AudioMime.forUrl(config?.uri?.toString())
+        return delegate.toMediaQueueItem(mediaItem.buildUpon().setMimeType(guessed).build())
     }
 }

@@ -110,6 +110,8 @@ android {
 
 dependencies {
     implementation(libs.androidx.core.ktx)
+    // AppCompatActivity + AppCompat theme: required by the Cast route-chooser dialog (spec §36).
+    implementation(libs.androidx.appcompat)
     implementation(libs.androidx.splashscreen)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)
@@ -139,6 +141,9 @@ dependencies {
     implementation(libs.androidx.hilt.navigation.compose)
 
     implementation(libs.coil.compose)
+    // Used directly by DownloadManager/UpdateManager/BasicAuthInterceptor — declare it explicitly
+    // instead of leaning on Coil's transitive copy.
+    implementation(libs.okhttp)
     implementation(libs.androidx.datastore.preferences)
 
     implementation(libs.kotlinx.coroutines.android)

@@ -6,7 +6,9 @@
         <item name="postSplashScreenTheme">@style/Theme.MiCaSong</item>
     </style>
 
-    <style name="Theme.MiCaSong" parent="android:Theme.Material.Light.NoActionBar">
+    <!-- AppCompat descendant (not android:Theme.Material): the Cast route-chooser dialog is an
+         AppCompat dialog and refuses to inflate under a pure platform theme (spec §36). -->
+    <style name="Theme.MiCaSong" parent="Theme.AppCompat.DayNight.NoActionBar">
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar" tools:targetApi="m">true</item>

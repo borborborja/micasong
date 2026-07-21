@@ -48,6 +48,64 @@ class SubsonicNegotiateRuntimeTest {
     }
 
     @Test
+    fun `follows redirects to the real endpoint`() {
+        // Reverse proxies commonly 301/302 to another path or scheme; HttpURLConnection alone
+        // refuses cross-scheme hops, so the client must follow Location by hand.
+        server = MockWebServer().apply {
+            dispatcher = object : Dispatcher() {
+                override fun dispatch(request: RecordedRequest): MockResponse {
+                    return if (!request.path!!.startsWith("/moved/")) {
+                        MockResponse().setResponseCode(302)
+                            .setHeader("Location", url("/moved" + request.path!!).toString())
+                    } else {
+                        MockResponse().setBody("""{"subsonic-response":{"status":"ok","version":"1.16.1"}}""")
+                    }
+                }
+            }
+            start()
+        }
+        runBlocking { assertNull(provider().negotiate()) }
+    }
+
+    @Test
+    fun `old server (error 30) is retried at its own version, down to legacy auth`() {
+        val incompatible =
+            """{"subsonic-response":{"status":"failed","version":"1.10.2","error":{"code":30,"message":"Incompatible version"}}}"""
+        server = MockWebServer().apply {
+            dispatcher = object : Dispatcher() {
+                override fun dispatch(request: RecordedRequest): MockResponse {
+                    val url = request.requestUrl!!
+                    val atServerVersion = url.queryParameter("v") == "1.10.2"
+                    val legacy = url.queryParameter("p") != null
+                    return when {
+                        atServerVersion && legacy -> MockResponse().setBody("""{"subsonic-response":{"status":"ok","version":"1.10.2"}}""")
+                        else -> MockResponse().setBody(incompatible)
+                    }
+                }
+            }
+            start()
+        }
+        val p = provider()
+        runBlocking { assertNull(p.negotiate()) }
+        val url = p.endpoint("getArtists")
+        assertTrue("should have adopted the server's version", url.contains("v=1.10.2"))
+        assertTrue("should have fallen back to legacy auth", url.contains("p=enc%3A") || url.contains("p=enc:"))
+    }
+
+    @Test
+    fun `subsonic error on a 4xx body still yields the specific message`() {
+        server = MockWebServer().apply {
+            enqueue(
+                MockResponse().setResponseCode(401)
+                    .setBody("""{"subsonic-response":{"status":"failed","error":{"code":40,"message":"Wrong username or password"}}}""")
+            )
+            start()
+        }
+        val err = runBlocking { provider().negotiate() }
+        assertTrue(err!!.contains("contraseña", ignoreCase = true))
+    }
+
+    @Test
     fun `falls back to legacy auth when token is rejected`() {
         server = MockWebServer().apply {
             dispatcher = object : Dispatcher() {

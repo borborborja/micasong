@@ -162,6 +162,9 @@ fun Track.toMediaItem(): MediaItem {
     return MediaItem.Builder()
         .setMediaId(MediaTree.Ids.PREFIX_TRACK + id)
         .setUri(mediaUri)
+        // Cast queue conversion requires a MIME type; only real MIMEs qualify (Plex reports bare
+        // codec names like "mp3", which would mislead ExoPlayer's content-type inference).
+        .setMimeType(com.micasong.player.data.audio.AudioMime.declaredOrNull(mimeType))
         .setMediaMetadata(metadata)
         .build()
 }

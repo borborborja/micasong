@@ -4,10 +4,10 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.runtime.getValue
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
@@ -18,8 +18,10 @@ import com.micasong.player.ui.RootViewModel
 import com.micasong.player.ui.theme.MiCaSongTheme
 import dagger.hilt.android.AndroidEntryPoint
 
+// AppCompatActivity (a FragmentActivity) rather than ComponentActivity: the Cast MediaRouteButton's
+// device-chooser dialog is a DialogFragment and throws on anything else (spec §36).
 @AndroidEntryPoint
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
 
     private val requestNotifications =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* best-effort */ }

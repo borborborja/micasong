@@ -5,7 +5,9 @@ import coil.ImageLoader
 import coil.ImageLoaderFactory
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
+import com.micasong.player.data.cache.BasicAuthInterceptor
 import dagger.hilt.android.HiltAndroidApp
+import okhttp3.OkHttpClient
 
 /**
  * MiCaSong application entry point.
@@ -24,6 +26,8 @@ class MiCaSongApp : Application(), ImageLoaderFactory {
      */
     override fun newImageLoader(): ImageLoader =
         ImageLoader.Builder(this)
+            // Artwork from Kodi/WebDAV carries Basic-auth credentials in the URL userinfo.
+            .okHttpClient { OkHttpClient.Builder().addInterceptor(BasicAuthInterceptor).build() }
             .memoryCache {
                 MemoryCache.Builder(this)
                     .maxSizePercent(0.20)
